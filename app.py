@@ -1198,7 +1198,7 @@ if __name__ == '__main__':
 
     # 確保主執行緒不會退出，以便排程器可以繼續運行
     try:
-        app.run(debug=True, use_reloader=False) # use_reloader=False 是為了避免在 debug 模式下重複啟動排程器
+        app.run(debug=True, use_reloader=False, host='0.0.0.0') # use_reloader=False 是為了避免在 debug 模式下重複啟動排程器
     except (KeyboardInterrupt, SystemExit):
         # 關閉排程器
         scheduler.shutdown()
