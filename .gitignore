@@ -1,0 +1,8 @@
+.env
+instance/
+__pycache__/
+.venv/
+*.pyc
+*.xlsx
+export_users.py
+import_users.py

@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每週待辦事項管理系統</title>
+    <style>
+        :root {
+            --color-primary: #4facfe;
+            --color-secondary: #00f2fe;
+            --color-background: #f0f2f5;
+            --color-text: #333;
+            --color-white: #fff;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; background: var(--color-background); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden; }
+        .header { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: var(--color-white); padding: 30px; text-align: center; position: relative; }
+        .header h1 { font-size: 2.2em; margin-bottom: 10px; }
+        .user-info-header { position: absolute; top: 20px; right: 20px; text-align: right; }
+        .user-actions a { color: var(--color-white); text-decoration: none; margin-left: 10px; padding: 8px 12px; background: rgba(255, 255, 255, 0.2); border-radius: 8px; transition: background 0.3s; }
+        .user-actions a:hover { background: rgba(255, 255, 255, 0.4); }
+        .main-content { padding: 25px; }
+        
+        /* Org Chart Styles (Optimized) */
+        .org-chart {
+            background: var(--color-white);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            text-align: center; /* Center the chart title */
+            display: flex; /* Use flexbox for overall layout */
+            flex-direction: column;
+            align-items: center; /* Center content horizontally */
+        }
+
+        .org-chart h3 {
+            margin-bottom: 25px;
+            font-size: 1.6em;
+            color: var(--color-text);
+            width: 100%; /* Ensure title takes full width */
+        }
+
+        .tree-container {
+            width: 100%; /* Allow tree to take full width of its container */
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Spacing between main levels (Director, Departments) */
+            align-items: center; /* Center the main levels */
+        }
+
+        .level {
+            width: 100%; /* Ensure levels take full width */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .level-node {
+            width: fit-content; /* Adjust width to content */
+            min-width: 200px; /* Minimum width for nodes */
+            max-width: 300px; /* Maximum width for nodes */
+        }
+
+        .director-level .level-node {
+            background: linear-gradient(135deg, #a1c4fd, #c2e9fb); /* Distinct background for director */
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .departments-grid {
+            display: grid; /* Use grid for departments to allow flexible wrapping */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive columns */
+            gap: 25px; /* Spacing between department cards */
+            width: 100%;
+            justify-content: center; /* Center department cards */
+        }
+
+        .department-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border-left: 6px solid; /* Thicker border for department */
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); /* Subtle shadow */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Align content to start */
+            text-align: left;
+        }
+
+        .department-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+        }
+
+        .department-card h4 {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: var(--color-text);
+            width: 100%;
+            text-align: center; /* Center department title */
+        }
+
+        .team-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px; /* Spacing between sections within department */
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--color-white);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Light shadow for user cards */
+            width: 100%; /* User card takes full width of its container */
+        }
+
+        .user-card:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .user-card.active {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: var(--color-white);
+            border-color: var(--color-primary);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .user-card.active .user-role, .user-card.active .user-dept {
+            color: var(--color-white);
+            opacity: 0.9;
+        }
+
+        .user-avatar {
+            font-size: 1.5em;
+            flex-shrink: 0; /* Prevent avatar from shrinking */
+        }
+
+        .user-details {
+            text-align: left;
+            flex-grow: 1;
+        }
+
+        .user-task-stats {
+            font-size: 0.8em;
+            color: #667;
+            margin-top: 5px;
+        }
+
+        .user-progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 6px;
+            margin-top: 4px;
+        }
+
+        .user-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        .user-name {
+            font-weight: bold;
+            font-size: 0.95em;
+            margin-bottom: 2px;
+        }
+
+        .user-role, .user-dept {
+            font-size: 0.78em;
+            color: #777;
+        }
+
+        .leaders-section, .staff-section {
+            margin-top: 15px;
+            padding-left: 15px; /* Indentation for sub-levels */
+            border-left: 1px solid #e0e0e0; /* Softer border for sub-sections */
+            width: 100%;
+        }
+
+        .leaders-section h5, .leaders-section h6, .staff-section h6 {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .unit-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f4f7; /* Light background for units */
+            border-radius: 10px;
+            border-left: 4px dotted #a0a0a0; /* Dotted border for units */
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.03); /* Inner shadow for depth */
+            width: 100%;
+        }
+
+        .unit-section h5 {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--color-text);
+            font-size: 1.1em;
+            text-align: center; /* Center unit title */
+        }
+
+        /* Dept Performance Styles */
+        .dept-performance { background: var(--color-white); padding: 25px; border-radius: 15px; margin-bottom: 25px; box-shadow: var(--shadow); }
+        .dept-performance h3 { text-align: center; margin-bottom: 20px; font-size: 1.4em; color: var(--color-text); }
+        #dept-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .dept-card { background: #f8f9fa; padding: 15px; border-radius: 12px; border-left: 5px solid var(--color-primary); }
+        .dept-name { font-weight: bold; color: #333; margin-bottom: 10px; font-size: 1.1em; }
+        .dept-stats-items { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 1.4em; font-weight: bold; color: var(--color-primary); }
+        .stat-label { font-size: 0.8em; color: #666; }
+        .progress-bar { background: #e9ecef; border-radius: 10px; overflow: hidden; height: 8px; margin-top: 10px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-secondary)); }
+
+        /* Dashboard Styles */
+        .dashboard { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+        .user-detail, .add-todo-form { background: var(--color-white); padding: 25px; border-radius: 15px; box-shadow: var(--shadow); }
+        .user-detail h3, .add-todo-form h3 { text-align: center; margin-bottom: 20px; font-size: 1.4em; }
+        .no-user-selected { text-align: center; color: #666; padding: 40px; }
+        .todo-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .section h4 { margin-bottom: 15px; }
+        .todo-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--color-primary); }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.7em; font-weight: bold; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-in-progress { background: #fff3cd; color: #856404; }
+        .status-pending { background: #f8d7da; color: #721c24; }
+        .status-uncompleted { background: #ffc107; color: #856404; } /* New style for uncompleted */
+        .uncompleted-reason { font-size: 0.8em; color: #a0a0a0; margin-top: 5px; padding-left: 10px; border-left: 2px solid #ffc107; }
+        .form-group { margin-bottom: 15px; }
+        .btn { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: var(--color-white); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .btn:hover { opacity: 0.9; }
+
+        .assigned-by-info { font-size: 0.8em; color: #888; margin-top: 5px; }
+        .status-select { 
+            width: 100%; 
+            padding: 8px; 
+            border-radius: 5px; 
+            border: 1px solid #ccc; 
+            margin-top: 5px;
+            background-color: #fff;
+            font-size: 0.9em;
+        }
+        .uncompleted-reason-input { 
+            width: 100%; 
+            padding: 8px; 
+            border-radius: 5px; 
+            border: 1px solid #ccc; 
+            margin-top: 5px;
+            font-size: 0.9em;
+            box-sizing: border-box;
+        }
+        .confirm-uncompleted-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px;
+            font-size: 0.9em;
+        }
+        .uncompleted-history {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+        .uncompleted-history h6 {
+            margin-bottom: 5px;
+            font-size: 0.85em;
+            color: #555;
+        }
+        .history-item {
+            font-size: 0.8em;
+            color: #777;
+            margin-bottom: 3px;
+            line-height: 1.4;
+        }
+        .todo-history {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+        .todo-history h6 {
+            margin-bottom: 5px;
+            font-size: 0.85em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if current_user %}
+            <div class="user-info-header">
+                <div>{{ current_user.avatar }} <strong>{{ current_user.name }}</strong></div>
+                <div class="user-actions">
+                    <a href="{{ url_for('change_password') }}">🔒 更改密碼</a>
+                    {% if current_user.level == 'admin' %}
+                        <a href="{{ url_for('admin_users') }}">⚙️ 管理後台</a>
+                        <a href="{{ url_for('reports') }}">📊 報告中心</a>
+                    {% endif %}
+                    <a href="{{ url_for('logout') }}">🚪 登出</a>
+                </div>
+            </div>
+            {% endif %}
+            <h1>🏭 每週待辦事項協作系統</h1>
+        </div>
+
+        <div class="main-content">
+            <div class="org-chart">
+                <h3>📊 組織架構圖</h3>
+                <div class="tree-container">
+                    {% if director %}
+                    <div class="level director-level">
+                        <div class="level-node">
+                            <div class="user-card" data-user-key="{{ director.user_key }}">
+                                <span class="user-avatar">{{ director.avatar }}</span>
+                                <div class="user-details">
+                                    <div class="user-name">{{ director.name }}</div>
+                                    <div class="user-role">{{ director.role }}</div>
+                                    <div class="user-task-stats">
+                                        本週進度: {{ director.completed_tasks }} / {{ director.total_tasks }}
+                                    </div>
+                                    <div class="user-progress-bar">
+                                        <div class="user-progress-fill" style="width: {% if director.total_tasks > 0 %}{{ (director.completed_tasks / director.total_tasks) * 100 }}{% else %}0{% endif %}%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="level departments-grid">
+                        {% for dept_name, data in departments.items() %}
+                            <div class="level-node department-card" style="border-color: {{ loop.cycle('#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6') }};">
+                                <h4>{{ dept_name }}</h4>
+                                <div class="team-grid">
+                                    {% if data.management_team %}
+                                    <div class="leaders-section">
+                                        <h6>主管</h6>
+                                        {% for manager in data.management_team %}
+                                        <div class="user-card" data-user-key="{{ manager.user_key }}">
+                                            <span class="user-avatar">{{ manager.avatar }}</span>
+                                            <div class="user-details">
+                                                <div class="user-name">{{ manager.name }}</div>
+                                                <div class="user-role">{{ manager.role }}</div>
+                                                <div class="user-task-stats">
+                                                    本週進度: {{ manager.completed_tasks }} / {{ manager.total_tasks }}
+                                                </div>
+                                                <div class="user-progress-bar">
+                                                    <div class="user-progress-fill" style="width: {% if manager.total_tasks > 0 %}{{ (manager.completed_tasks / manager.total_tasks) * 100 }}{% else %}0{% endif %}%;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    {% for unit_name, unit_data in data.units.items() %}
+                                    <div class="unit-section">
+                                        <h5>{{ unit_name }}</h5>
+                                        {% if unit_data.management_team %}
+                                        <div class="leaders-section">
+                                            <h6>主管</h6>
+                                            {% for manager in unit_data.management_team %}
+                                            <div class="user-card" data-user-key="{{ manager.user_key }}">
+                                                <span class="user-avatar">{{ manager.avatar }}</span>
+                                                <div class="user-details">
+                                                    <div class="user-name">{{ manager.name }}</div>
+                                                    <div class="user-role">{{ manager.role }}</div>
+                                                    <div class="user-task-stats">
+                                                        本週進度: {{ manager.completed_tasks }} / {{ manager.total_tasks }}
+                                                    </div>
+                                                    <div class="user-progress-bar">
+                                                        <div class="user-progress-fill" style="width: {% if manager.total_tasks > 0 %}{{ (manager.completed_tasks / manager.total_tasks) * 100 }}{% else %}0{% endif %}%;"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+
+                                        {% if unit_data.leaders %}
+                                        <div class="leaders-section">
+                                            <h6>組長</h6>
+                                            {% for leader in unit_data.leaders %}
+                                            <div class="user-card" data-user-key="{{ leader.user_key }}">
+                                                <span class="user-avatar">{{ leader.avatar }}</span>
+                                                <div class="user-details">
+                                                <div class="user-name">{{ leader.name }}</div>
+                                                <div class="user-role">{{ leader.role }}</div>
+                                                <div class="user-task-stats">
+                                                    本週進度: {{ leader.completed_tasks }} / {{ leader.total_tasks }}
+                                                </div>
+                                                <div class="user-progress-bar">
+                                                    <div class="user-progress-fill" style="width: {% if leader.total_tasks > 0 %}{{ (leader.completed_tasks / leader.total_tasks) * 100 }}{% else %}0{% endif %}%;"></div>
+                                                </div>
+                                            </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+
+                                        {% if unit_data.staff %}
+                                        <div class="staff-section">
+                                            <h6>作業員</h6>
+                                            {% for member in unit_data.staff %}
+                                            <div class="user-card" data-user-key="{{ member.user_key }}">
+                                                <span class="user-avatar">{{ member.avatar }}</span>
+                                                <div class="user-details">
+                                                <div class="user-name">{{ member.name }}</div>
+                                                <div class="user-role">{{ member.role }}</div>
+                                                <div class="user-task-stats">
+                                                    本週進度: {{ member.completed_tasks }} / {{ member.total_tasks }}
+                                                </div>
+                                                <div class="user-progress-bar">
+                                                    <div class="user-progress-fill" style="width: {% if member.total_tasks > 0 %}{{ (member.completed_tasks / member.total_tasks) * 100 }}{% else %}0{% endif %}%;"></div>
+                                                </div>
+                                            </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <div class="dept-performance">
+                <h3>📈 各部門達成效果</h3>
+                <div id="dept-stats">
+                    <!-- Dept stats will be loaded here by JS -->
+                </div>
+            </div>
+
+            <div class="dashboard">
+                <div class="user-detail">
+                    <h3>👤 個人工作詳情</h3>
+                    <div id="user-content">
+                        <div class="no-user-selected">請點擊上方組織圖中的人員以查看詳細資訊</div>
+                    </div>
+                </div>
+                <div id="add-todo-form-container" class="add-todo-form" style="display: none;">
+                    <h3>➕ 新增待辦事項</h3>
+                    <form id="todoForm">
+                        <div class="form-group" id="assign-to-group" style="display: none;">
+                            <label for="assign-to">指派給</label>
+                            <select id="assign-to" required>
+                                <!-- Options will be loaded by JS -->
+                            </select>
+                        </div>
+                        <div id="no-assignable-users-message" style="display: none; color: #dc3545; margin-bottom: 15px; text-align: center;">
+                            您沒有可指派的人員。
+                        </div>
+                        <div class="form-group">
+                            <label for="todo-type">類型</label>
+                            <select id="todo-type" required><option value="current">本週進度</option><option value="next" selected>下週計畫</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="todo-title">標題</label>
+                            <input type="text" id="todo-title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="todo-description">描述</label>
+                            <textarea id="todo-description" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="todo-status">狀態</label>
+                            <select id="todo-status" required>
+                                <option value="pending" selected>待開始</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">新增</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let selectedUserKey = null;
+            let assignableUsers = [];
+
+            // --- Utility Functions ---
+            function escapeHTML(str) {
+                if (str === null || str === undefined) return '';
+                return str.toString()
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function getStatusText(status) {
+                const statusMap = {
+                    'pending': '待開始',
+                    'in-progress': '進行中',
+                    'completed': '已完成',
+                    'uncompleted': '未完成'
+                };
+                return statusMap[status] || status;
+            }
+
+            // --- API Fetching Functions ---
+            function fetchUserDetail(userKey) {
+                fetch(`/api/user/${userKey}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) throw new Error(data.error);
+                        renderUserDetail(data);
+                        assignableUsers = data.permissions.assignable_users || [];
+                        updateAssignToDropdown(data.permissions.can_assign);
+                    })
+                    .catch(err => {
+                        let msg = (err.message === 'Access denied') ? '您沒有權限觀看此使用者的待辦事項。' : `無法載入資料: ${err.message}`;
+                        document.getElementById('user-content').innerHTML = `<div class="no-user-selected">${msg}</div>`;
+                        document.getElementById('add-todo-form-container').style.display = 'none';
+                    });
+            }
+
+            function updateDeptStats() {
+                fetch('/api/dept-stats')
+                    .then(response => response.json())
+                    .then(data => {
+                        const statsContainer = document.getElementById('dept-stats');
+                        statsContainer.innerHTML = ''; // Clear existing stats
+                        for (const deptName in data) {
+                            const stats = data[deptName];
+                            const card = `
+                                <div class="dept-card">
+                                    <div class="dept-name">${escapeHTML(deptName)}</div>
+                                    <div class="dept-stats-items">
+                                        <div class="stat-item">
+                                            <div class="stat-number">${stats.total}</div>
+                                            <div class="stat-label">總任務</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-number">${stats.completed}</div>
+                                            <div class="stat-label">已完成</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-number">${stats.completion_rate}%</div>
+                                            <div class="stat-label">完成率</div>
+                                        </div>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${stats.completion_rate}%;"></div>
+                                    </div>
+                                </div>
+                            `;
+                            statsContainer.innerHTML += card;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching department stats:', error);
+                        const statsContainer = document.getElementById('dept-stats');
+                        statsContainer.innerHTML = '<p>無法載入部門統計資料。</p>';
+                    });
+            }
+
+            // --- Rendering Functions ---
+            function renderUserDetail(data) {
+                const userContent = document.getElementById('user-content');
+                const canModify = data.permissions.can_modify;
+
+                const renderTodos = (todos) => {
+                    if (!todos || todos.length === 0) return '<p>暫無事項</p>';
+                    return todos.map(todo => `
+                        <div class="todo-item">
+                            <h5>${escapeHTML(todo.title)}</h5>
+                            <p>${escapeHTML(todo.description)}</p>
+                            ${(() => {
+                                let displayAssignedInfo = '';
+                                if (todo.assigned_by) {
+                                    if (todo.assignee_user_key === todo.assigner_user_key) {
+                                        displayAssignedInfo = `自己指派`;
+                                    } else {
+                                        displayAssignedInfo = `由 ${escapeHTML(todo.assigned_by.name)} 指派給 ${escapeHTML(data.user.name)}`;
+                                    }
+                                }
+                                return displayAssignedInfo ? `<div class="assigned-by-info">${displayAssignedInfo}</div>` : '';
+                            })()} 
+                            ${todo.can_edit_status ? 
+                                `<select id="status-select-${todo.id}" class="status-select" data-todo-id="${todo.id}">
+                                    <option value="pending" ${todo.status === 'pending' ? 'selected' : ''}>待開始</option>
+                                    <option value="in-progress" ${todo.status === 'in-progress' ? 'selected' : ''}>進行中</option>
+                                    <option value="completed" ${todo.status === 'completed' ? 'selected' : ''}>已完成</option>
+                                    <option value="uncompleted">未完成</option>
+                                </select>
+                                <div id="uncompleted-reason-container-${todo.id}" style="display:none; margin-top: 5px;">
+                                    <textarea id="uncompleted-reason-${todo.id}" class="uncompleted-reason-input" placeholder="請輸入未完成原因"></textarea>
+                                    <button type="button" class="btn confirm-uncompleted-btn" data-todo-id="${todo.id}">確認原因</button>
+                                </div>` : 
+                                `<span class="status-badge status-${todo.status}">${getStatusText(todo.status)}</span>`
+                            }
+                            ${todo.history_log && todo.history_log.length > 0 ? 
+                                `<div class="todo-history">
+                                    <h6>任務履歷:</h6>
+                                    ${todo.history_log.map(entry => {
+                                        let eventText = '';
+                                        const timestamp = new Date(entry.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+                                        const actorName = entry.actor ? `由 ${escapeHTML(entry.actor.name)}` : '';
+
+                                        if (entry.event_type === 'assigned') {
+                                            const assignedToName = escapeHTML(entry.details.assigned_to.name);
+                                            if (entry.actor && entry.details.assigned_to && entry.actor.user_key === entry.details.assigned_to.user_key) {
+                                                eventText = `自己指派`;
+                                            } else if (entry.actor) {
+                                                eventText = `由 ${escapeHTML(entry.actor.name)} 指派給 ${assignedToName}`; 
+                                            } else {
+                                                eventText = `指派給 ${assignedToName}`;
+                                            }
+                                        } else if (entry.event_type === 'status_changed') {
+                                            eventText = `${actorName} 狀態從 ${getStatusText(entry.details.old_status)} 變更為 ${getStatusText(entry.details.new_status)}`;
+                                            if (entry.details.reason) {
+                                                eventText += ` (原因: ${escapeHTML(entry.details.reason)})`;
+                                            }
+                                        } else if (entry.event_type === 'auto_transfer') {
+                                            eventText = `系統自動從下週計畫轉移`;
+                                        } else if (entry.event_type === 'archived') {
+                                            eventText = `系統自動歸檔`;
+                                        }
+                                        return `<div class="history-item">${eventText} (${timestamp})</div>`;
+                                    }).join('')}
+                                </div>` : ''}
+                        </div>`).join('');
+                };
+
+                userContent.innerHTML = `
+                    <div class="todo-sections">
+                        <div class="section"><h4>📋 本週進度</h4>${renderTodos(data.todos.current)}</div>
+                        <div class="section"><h4>📅 下週計畫</h4>${renderTodos(data.todos.next)}</div>
+                    </div>`;
+                
+                document.getElementById('add-todo-form-container').style.display = canModify || data.permissions.can_assign ? 'block' : 'none';
+            }
+
+            function updateAssignToDropdown(canAssign) {
+                const assignToGroup = document.getElementById('assign-to-group');
+                const assignToSelect = document.getElementById('assign-to');
+                const noAssignableUsersMessage = document.getElementById('no-assignable-users-message');
+                assignToSelect.innerHTML = '';
+
+                if (canAssign && assignableUsers.length > 0) {
+                    assignToGroup.style.display = 'block';
+                    noAssignableUsersMessage.style.display = 'none';
+                    
+                    const currentUserKey = '{{ current_user.user_key }}';
+                    
+                    // Add current user to the top of the list
+                    assignToSelect.innerHTML += `<option value="${currentUserKey}">自己 (${escapeHTML('{{ current_user.name }}')})</option>`;
+
+                    // Add other assignable users
+                    assignableUsers.forEach(user => {
+                        if (user.user_key !== currentUserKey) { 
+                            assignToSelect.innerHTML += `<option value="${user.user_key}">${escapeHTML(user.name)} (${escapeHTML(user.role)})</option>`;
+                        }
+                    });
+                    
+                    // Set the default selection
+                    assignToSelect.value = selectedUserKey;
+
+                } else {
+                    assignToGroup.style.display = 'none';
+                    noAssignableUsersMessage.style.display = 'block';
+                }
+            }
+
+            // --- Event Listener Setup ---
+            function setupUserCardClickListeners() {
+                const userCards = document.querySelectorAll('.user-card');
+                userCards.forEach(card => {
+                    card.addEventListener('click', function() {
+                        userCards.forEach(c => c.classList.remove('active'));
+                        this.classList.add('active');
+                        selectedUserKey = this.dataset.userKey;
+                        fetchUserDetail(selectedUserKey);
+                    });
+                });
+            }
+
+            function setupTodoFormSubmitListener() {
+                document.getElementById('todoForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const assignToSelect = document.getElementById('assign-to');
+                    let targetUserKeyForTodo = assignToSelect.value || selectedUserKey;
+
+                    if (!targetUserKeyForTodo) { alert('請選擇一個指派對象'); return; }
+
+                    const todoData = {
+                        user_key: targetUserKeyForTodo,
+                        type: document.getElementById('todo-type').value,
+                        title: document.getElementById('todo-title').value,
+                        description: document.getElementById('todo-description').value,
+                        status: document.getElementById('todo-status').value,
+                    };
+
+                    fetch('/api/todo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(todoData)
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.error) { alert('錯誤: ' + result.error); }
+                        else { 
+                            alert(result.message);
+                            this.reset();
+                            fetchUserDetail(selectedUserKey); 
+                            updateDeptStats(); 
+                        }
+                    });
+                });
+            }
+
+            function setupDynamicEventListeners() {
+                document.body.addEventListener('change', function(e) {
+                    if (e.target && e.target.classList.contains('status-select')) {
+                        const todoId = e.target.dataset.todoId;
+                        const newStatus = e.target.value;
+                        const reasonContainer = document.getElementById(`uncompleted-reason-container-${todoId}`);
+
+                        if (newStatus === 'uncompleted') {
+                            reasonContainer.style.display = 'block';
+                        } else {
+                            reasonContainer.style.display = 'none';
+                            updateTodoStatus(todoId, newStatus);
+                        }
+                    }
+                });
+
+                document.body.addEventListener('click', function(e) {
+                    if (e.target && e.target.classList.contains('confirm-uncompleted-btn')) {
+                        const todoId = e.target.dataset.todoId;
+                        const reasonInput = document.getElementById(`uncompleted-reason-${todoId}`);
+                        const reason = reasonInput.value.trim();
+                        if (!reason) {
+                            alert('請輸入未完成原因');
+                            return;
+                        }
+                        updateTodoStatus(todoId, 'uncompleted', reason);
+                    }
+                });
+            }
+            
+            function updateTodoStatus(todoId, status, reason = null) {
+                const body = { status: status };
+                if (reason) {
+                    body.uncompleted_reason = reason;
+                }
+
+                fetch(`/api/todo/${todoId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.error) {
+                        alert('更新失敗: ' + result.error);
+                    } else {
+                        alert(result.message);
+                    }
+                    fetchUserDetail(selectedUserKey); // Refresh view
+                    updateDeptStats(); // Refresh stats
+                })
+                .catch(err => {
+                    console.error('Update status error:', err);
+                    alert('更新時發生網路錯誤');
+                });
+            }
+
+
+            // --- Initial Page Load ---
+            setupUserCardClickListeners();
+            setupTodoFormSubmitListener();
+            setupDynamicEventListeners();
+            updateDeptStats();
+            
+            const currentUserKey = '{{ current_user.user_key }}';
+            if (currentUserKey) {
+                const currentUserCard = document.querySelector(`.user-card[data-user-key="${currentUserKey}"]`);
+                if (currentUserCard) {
+                    currentUserCard.classList.add('active');
+                }
+                selectedUserKey = currentUserKey;
+                fetchUserDetail(currentUserKey);
+            }
+        });
+    </script>
+</body>
+</html>

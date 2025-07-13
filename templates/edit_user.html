@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>編輯使用者 - 待辦事項系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-right: 15px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+        }
+
+        .alert-success {
+            background-color: #efe;
+            border: 1px solid #cfc;
+            color: #3c3;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        .help-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✏️ 編輯使用者</h1>
+            <p>修改 {{ user.name }} 的資料</p>
+        </div>
+
+        <div class="form-container">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="user_key">使用者代碼 <span class="required">*</span></label>
+                        <input type="text" id="user_key" name="user_key" required 
+                               value="{{ user.user_key }}" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="name">姓名 <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" required 
+                               value="{{ user.name }}" maxlength="100">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="role">職位 <span class="required">*</span></label>
+                        <input type="text" id="role" name="role" required 
+                               value="{{ user.role }}" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="department">部門 <span class="required">*</span></label>
+                        <select id="department" name="department" required>
+                            <option value="">請選擇部門</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="unit">單位</label>
+                        <select id="unit" name="unit">
+                            <option value="">請選擇單位 (可選)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="level">權限等級 <span class="required">*</span></label>
+                        <select id="level" name="level" required>
+                            <option value="">請選擇權限等級</option>
+                            <option value="executive-manager" {{ 'selected' if user.level == 'executive-manager' else '' }}>製造中心-協理</option>
+                            <option value="plant-manager" {{ 'selected' if user.level == 'plant-manager' else '' }}>廠長</option>
+                            <option value="manager" {{ 'selected' if user.level == 'manager' else '' }}>經理</option>
+                            <option value="assistant-manager" {{ 'selected' if user.level == 'assistant-manager' else '' }}>副理</option>
+                            <option value="section-chief" {{ 'selected' if user.level == 'section-chief' else '' }}>課長</option>
+                            <option value="deputy-section-chief" {{ 'selected' if user.level == 'deputy-section-chief' else '' }}>副課長</option>
+                            <option value="team-leader" {{ 'selected' if user.level == 'team-leader' else '' }}>組長</option>
+                            <option value="staff" {{ 'selected' if user.level == 'staff' else '' }}>作業員</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="avatar">頭像</label>
+                        <select id="avatar" name="avatar">
+                            <option value="👤" {{ 'selected' if user.avatar == '👤' else '' }}>👤 預設</option>
+                            <option value="👨‍💼" {{ 'selected' if user.avatar == '👨‍💼' else '' }}>👨‍💼 男性主管</option>
+                            <option value="👩‍💼" {{ 'selected' if user.avatar == '👩‍💼' else '' }}>👩‍💼 女性主管</option>
+                            <option value="👨‍🔧" {{ 'selected' if user.avatar == '👨‍🔧' else '' }}>👨‍🔧 男性技術員</option>
+                            <option value="👩‍🔧" {{ 'selected' if user.avatar == '👩‍🔧' else '' }}>👩‍🔧 女性技術員</option>
+                            <option value="👨‍🏭" {{ 'selected' if user.avatar == '👨‍🏭' else '' }}>👨‍🏭 男性作業員</option>
+                            <option value="👩‍🏭" {{ 'selected' if user.avatar == '👩‍🏭' else '' }}>👩‍🏭 女性作業員</option>
+                            <option value="👨‍🔬" {{ 'selected' if user.avatar == '👨‍🔬' else '' }}>👨‍🔬 男性檢驗員</option>
+                            <option value="👩‍🔬" {{ 'selected' if user.avatar == '👩‍🔬' else '' }}>👩‍🔬 女性檢驗員</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <!-- Empty group for alignment -->
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">電子郵件 <span class="required">*</span></label>
+                        <input type="email" id="email" name="email" required 
+                               value="{{ user.email }}" maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">新密碼</label>
+                        <input type="password" id="password" name="password" 
+                               placeholder="留空則不更改密碼" maxlength="255">
+                        <div class="help-text">如需更改密碼請輸入新密碼，否則留空</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 40px;">
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">取消</a>
+                    <button type="submit" class="btn btn-primary">更新使用者</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        const departmentSelect = document.getElementById('department');
+        const unitSelect = document.getElementById('unit');
+        const levelSelect = document.getElementById('level');
+
+        let orgStructure = { departments: [], units: {} };
+
+        // Fetch organization structure
+        try {
+            const response = await fetch('/api/org-structure');
+            orgStructure = await response.json();
+            populateDepartments();
+            populateLevels();
+            // Set initial values for department and unit
+            departmentSelect.value = '{{ user.department }}';
+            populateUnits(departmentSelect.value, '{{ user.unit or '' }}');
+        } catch (error) {
+            console.error('Error fetching organization structure:', error);
+            alert('無法載入組織結構數據。');
+        }
+
+        function populateDepartments() {
+            departmentSelect.innerHTML = '<option value="">請選擇部門</option>';
+            orgStructure.departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                departmentSelect.appendChild(option);
+            });
+        }
+
+        function populateUnits(selectedDepartment, selectedUnit = '') {
+            unitSelect.innerHTML = '<option value="">請選擇單位 (可選)</option>';
+            const unitsForDept = orgStructure.units[selectedDepartment] || [];
+            unitsForDept.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit;
+                option.textContent = unit;
+                if (unit === selectedUnit) {
+                    option.selected = true;
+                }
+                unitSelect.appendChild(option);
+            });
+        }
+
+        function populateLevels() {
+            const levels = [
+                { value: 'executive-manager', text: '製造中心-協理' },
+                { value: 'plant-manager', text: '廠長' },
+                { value: 'manager', text: '經理' },
+                { value: 'assistant-manager', text: '副理' },
+                { value: 'section-chief', text: '課長' },
+                { value: 'deputy-section-chief', text: '副課長' },
+                { value: 'team-leader', text: '組長' },
+                { value: 'staff', text: '作業員' }
+            ];
+            levelSelect.innerHTML = '<option value="">請選擇權限等級</option>';
+            levels.forEach(level => {
+                const option = document.createElement('option');
+                option.value = level.value;
+                option.textContent = level.text;
+                if (level.value === '{{ user.level }}') {
+                    option.selected = true;
+                }
+                levelSelect.appendChild(option);
+            });
+        }
+
+        departmentSelect.addEventListener('change', function() {
+            populateUnits(this.value);
+        });
+    });
+</script>
+</html>

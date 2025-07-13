@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用者管理 - 待辦事項系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .user-table th,
+        .user-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-table th {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            font-weight: 600;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .user-table tr:hover {
+            background-color: #f8f9fa;
+            transform: scale(1.01);
+            transition: all 0.3s ease;
+        }
+
+        .status-active {
+            color: #28a745;
+            font-weight: 600;
+            background: #d4edda;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .status-inactive {
+            color: #dc3545;
+            font-weight: 600;
+            background: #f8d7da;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 2px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .actions {
+            white-space: nowrap;
+            min-width: 200px;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #007bff;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .add-user-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .add-user-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .user-avatar {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .level-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .level-director { background: #6f42c1; color: white; }
+        .level-manager { background: #007bff; color: white; }
+        .level-section-chief { background: #28a745; color: white; }
+        .level-team-leader { background: #ffc107; color: #212529; }
+        .level-staff { background: #6c757d; color: white; }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 使用者管理</h1>
+            <p>管理系統中的所有組織成員</p>
+        </div>
+
+        <div class="content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="toolbar">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">🏠 返回主頁</a>
+                <a href="{{ url_for('reports') }}" class="btn btn-info">📊 報告中心</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">登出</a>
+                <a href="{{ url_for('add_user') }}" class="add-user-btn">➕ 新增使用者</a>
+            </div>
+            
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>使用者</th>
+                        <th>職位 / 部門</th>
+                        <th>權限等級</th>
+                        <th>聯絡資訊</th>
+                        <th>狀態</th>
+                        <th>最後登入</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <span class="user-avatar">{{ user.avatar }}</span>
+                            <strong>{{ user.name }}</strong>
+                            <br>
+                            <small style="color: #666;">{{ user.user_key }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ user.role }}</strong>
+                            <br>
+                            <small style="color: #666;">{{ user.department }}</small>
+                        </td>
+                        <td>
+                            <span class="level-badge level-{{ user.level }}">
+                                {% if user.level == 'admin' %}系統管理員
+                                {% elif user.level == 'executive-manager' %}協理
+                                {% elif user.level == 'plant-manager' %}廠長
+                                {% elif user.level == 'manager' %}經理
+                                {% elif user.level == 'assistant-manager' %}副理
+                                {% elif user.level == 'section-chief' %}課長
+                                {% elif user.level == 'deputy-section-chief' %}副課長
+                                {% elif user.level == 'team-leader' %}組長
+                                {% elif user.level == 'staff' %}作業員
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="mailto:{{ user.email }}" style="color: #007bff;">{{ user.email }}</a>
+                            {% if user.failed_login_attempts > 0 %}
+                                <br><small style="color: #dc3545;">失敗嘗試: {{ user.failed_login_attempts }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_account_locked() %}
+                                <span style="color: #dc3545; font-weight: 600; background: #f8d7da; padding: 4px 8px; border-radius: 12px; font-size: 12px;">🔒 鎖定</span>
+                            {% elif user.is_active %}
+                                <span class="status-active">✅ 啟用</span>
+                            {% else %}
+                                <span class="status-inactive">❌ 停用</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.last_login %}
+                                {{ user.last_login.strftime('%m/%d %H:%M') }}
+                            {% else %}
+                                <span style="color: #999;">從未登入</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions">
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-info">✏️ 編輯</a>
+                            
+                            <button class="btn btn-primary" onclick="toggleUserStatus({{ user.id }})">
+                                {% if user.is_active %}🚫 停用{% else %}✅ 啟用{% endif %}
+                            </button>
+                            
+                            {% if user.is_account_locked() %}
+                                <button class="btn btn-warning" onclick="unlockUser({{ user.id }})">🔓 解鎖</button>
+                            {% endif %}
+                            
+                            <button class="btn btn-danger" onclick="resetPassword({{ user.id }})">🔑 重置密碼</button>
+                            
+                            <button class="btn btn-danger" onclick="deleteUser({{ user.id }}, '{{ user.name }}')" style="margin-left: 5px;">🗑️ 刪除</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if not users %}
+                <div style="text-align: center; padding: 50px; color: #666;">
+                    <h3>目前沒有使用者</h3>
+                    <p>點擊上方的「新增使用者」按鈕來新增第一個使用者</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function toggleUserStatus(userId) {
+            if (confirm('確定要切換此使用者的狀態嗎？')) {
+                fetch(`/admin/user/${userId}/toggle-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('錯誤: ' + data.error);
+                    } else {
+                        alert(data.message);
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    alert('操作失敗: ' + error);
+                });
+            }
+        }
+
+        function unlockUser(userId) {
+            if (confirm('確定要解鎖此使用者嗎？')) {
+                fetch(`/admin/user/${userId}/unlock`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(error => {
+                    alert('操作失敗: ' + error);
+                });
+            }
+        }
+
+        function resetPassword(userId) {
+            if (confirm('確定要重置此使用者的密碼嗎？')) {
+                fetch(`/admin/user/${userId}/reset-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(`密碼已重置！\n臨時密碼: ${data.temp_password}\n請告知使用者並要求其立即更改密碼。`);
+                })
+                .catch(error => {
+                    alert('操作失敗: ' + error);
+                });
+            }
+        }
+
+        function deleteUser(userId, userName) {
+            if (confirm(`確定要刪除使用者「${userName}」嗎？\n\n此操作將同時刪除該使用者的所有待辦事項，且無法復原！`)) {
+                fetch(`/admin/users/${userId}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('錯誤: ' + data.error);
+                    } else {
+                        alert(data.message);
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    alert('操作失敗: ' + error);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
