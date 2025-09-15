@@ -11,6 +11,14 @@
             background-color: #f4f7f9;
             color: #333;
             padding: 20px;
+            font-size: 16px; /* Explicitly set a base font size */
+        }
+        pre, code {
+            font-size: 1em; /* Ensure pre/code elements don't have excessively large fonts */
+        }
+        .flatpickr-prev-month,
+        .flatpickr-next-month {
+            display: none; /* Hide navigation arrows */
         }
         .container {
             max-width: 900px;
@@ -18,7 +26,6 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.05);
-            overflow: hidden;
         }
         .header {
             background: linear-gradient(135deg, #5A78E6, #42A5F5);
@@ -28,6 +35,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
         }
         .header h1 {
             margin: 0;
@@ -64,6 +73,19 @@
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 16px;
+        }
+        /* flatpickr 日期時間選擇器美化 */
+        .form-group input#specific_date.flatpickr-input {
+            background: #f8fbff;
+            border: 1.5px solid #5A78E6;
+            color: #333;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(90,120,230,0.08);
+            transition: border-color 0.2s;
+        }
+        .form-group input#specific_date.flatpickr-input:focus {
+            border-color: #42A5F5;
+            outline: none;
         }
         .form-group textarea {
             resize: vertical;
@@ -114,6 +136,7 @@
         .alert-warning { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
     </style>
     <link href="{{ url_for('static', filename='css/select2.min.css') }}" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr/flatpickr.min.css') }}">
 </head>
 <body>
     <div class="container">
@@ -132,7 +155,7 @@
 
             <div class="form-section">
                 <h2>{% if editing_notification %}編輯通知{% else %}新增通知{% endif %}</h2>
-                <form method="POST" action="{{ url_for('edit_scheduled_notification', notification_id=editing_notification.id) if editing_notification else url_for('scheduled_notifications') }}">
+                <form method="POST" action="{{ url_for('edit_scheduled_notification', notification_id=editing_notification.id) if editing_notification else url_for('scheduled_notifications') }}" novalidate>
                     <div class="form-group">
                         <label for="title">通知標題</label>
                         <input type="text" id="title" name="title" required value="{{ editing_notification.title if editing_notification else '' }}">
@@ -157,8 +180,8 @@
                         </select>
                     </div>
                     <div id="one_time_schedule_fields" class="form-group">
-                        <label for="specific_date">發送日期</label>
-                        <input type="date" id="specific_date" name="specific_date" value="{{ editing_notification.specific_date.strftime('%Y-%m-%d') if editing_notification and editing_notification.specific_date else '' }}">
+                        <label for="specific_date">發送日期與時間</label>
+                        <input type="text" id="specific_date" name="specific_date" value="{{ editing_notification.specific_date.strftime('%Y-%m-%d %H:%M') if editing_notification and editing_notification.specific_date else '' }}">
                     </div>
                     <div id="weekly_schedule_fields" class="form-group" style="display: none;">
                         <label for="weekly_day">每週幾</label>
@@ -169,8 +192,6 @@
                             <option value="3" {% if editing_notification and editing_notification.weekly_day == 3 %}selected{% endif %}>星期四</option>
                             <option value="4" {% if editing_notification and editing_notification.weekly_day == 4 %}selected{% endif %}>星期五</option>
                         </select>
-                    </div>
-                    <div class="form-group">
                         <label for="specific_time">發送時間</label>
                         <input type="time" id="specific_time" name="specific_time" required value="{{ editing_notification.specific_time.strftime('%H:%M') if editing_notification and editing_notification.specific_time else '' }}">
                     </div>
@@ -263,13 +284,24 @@
                 allowClear: true
             });
 
-            let flatpickrInstance;
+            let flatpickrInstance = null;
 
             function initializeFlatpickr() {
+                if (flatpickrInstance) {
+                    flatpickrInstance.destroy();
+                    flatpickrInstance = null;
+                }
                 flatpickrInstance = flatpickr("#specific_date", {
-                    locale: "zh-tw",
-                    dateFormat: "Y-m-d",
-                    defaultDate: "{{ editing_notification.specific_date.strftime('%Y-%m-%d') if editing_notification and editing_notification.specific_date else 'today' }}"
+                    enableTime: true,
+                    noCalendar: false,
+                    dateFormat: "Y-m-d H:i",
+                    minuteIncrement: 15,
+                    time_24hr: true,
+                    locale: "zh_tw",
+                    defaultDate: "{{ editing_notification.specific_date.strftime('%Y-%m-%d %H:%M') if editing_notification and editing_notification.specific_date else 'today' }}",
+                    prevArrow: "<svg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 17 17'><g></g><path d='M5.207 8.471l7.146 7.147-0.707 0.707-7.853-7.854 7.854-7.853 0.707 0.707-7.147 7.146z' /></svg>",
+                    nextArrow: "<svg version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 17 17'><g></g><path d='M13.207 8.472l-7.854 7.854-0.707-0.707 7.146-7.146-7.146-7.148 0.707-0.707 7.854 7.854z' /></svg>",
+                    appendTo: document.querySelector('#one_time_schedule_fields')
                 });
             }
 
@@ -279,16 +311,14 @@
                     $('#weekly_schedule_fields').hide();
                     $('#specific_date').prop('required', true);
                     $('#weekly_day').prop('required', false);
-                    if (!flatpickrInstance) {
-                        initializeFlatpickr();
-                    } else {
-                        flatpickrInstance.setDate($('#specific_date').val()); // Ensure date is set if re-showing
-                    }
+                    $('#specific_time').prop('required', false);
+                    initializeFlatpickr();
                 } else {
                     $('#one_time_schedule_fields').hide();
                     $('#weekly_schedule_fields').show();
                     $('#specific_date').prop('required', false);
                     $('#weekly_day').prop('required', true);
+                    $('#specific_time').prop('required', true);
                     if (flatpickrInstance) {
                         flatpickrInstance.destroy();
                         flatpickrInstance = null;
@@ -297,11 +327,7 @@
             }
 
             // Initial setup
-            if ($('#schedule_type').val() === 'one_time') {
-                initializeFlatpickr();
-            }
             toggleScheduleFields();
-
             $('#schedule_type').change(toggleScheduleFields);
 
             const tableBody = document.querySelector('.table tbody');

@@ -1407,33 +1407,43 @@ def scheduled_notifications():
         specific_time_str = request.form.get('specific_time')
         weekly_day_str = request.form.get('weekly_day')
 
-        if not all([title, body, recipient_user_ids, schedule_type, specific_time_str]):
-            flash('所有欄位都是必填的！', 'error')
+        # --- Start of new validation logic ---
+        if not all([title, body, recipient_user_ids, schedule_type]):
+            flash('標題、內容、收件人、排程類型為必填欄位！', 'error')
             return redirect(url_for('scheduled_notifications'))
 
         specific_date = None
+        specific_time = None
+        weekly_day = None
+
         if schedule_type == 'one_time':
             if not specific_date_str:
-                flash('特定日期排程必須選擇日期！', 'error')
+                flash('「特定日期與時間」排程必須選擇日期和時間！', 'error')
                 return redirect(url_for('scheduled_notifications'))
             try:
-                specific_date = datetime.strptime(specific_date_str, '%Y-%m-%d').date()
+                # Parse combined date and time string from flatpickr
+                full_datetime = datetime.strptime(specific_date_str, '%Y-%m-%d %H:%M')
+                specific_date = full_datetime.date()
+                specific_time = full_datetime.time()
             except ValueError:
-                flash('日期格式無效！', 'error')
+                flash('日期時間格式無效！請使用 YYYY-MM-DD HH:MM 格式。', 'error')
                 return redirect(url_for('scheduled_notifications'))
-
-        weekly_day = None
-        if schedule_type == 'weekly':
-            if not weekly_day_str:
-                flash('每週重複排程必須選擇星期幾！', 'error')
+        
+        elif schedule_type == 'weekly':
+            if not weekly_day_str or not specific_time_str:
+                flash('「每週重複」排程必須選擇星期和時間！', 'error')
                 return redirect(url_for('scheduled_notifications'))
+            
             weekly_day = int(weekly_day_str)
-
-        try:
-            specific_time = dt_time.fromisoformat(specific_time_str)
-        except ValueError:
-            flash('時間格式無效！', 'error')
+            try:
+                specific_time = dt_time.fromisoformat(specific_time_str)
+            except ValueError:
+                flash('時間格式無效！', 'error')
+                return redirect(url_for('scheduled_notifications'))
+        else:
+            flash('無效的排程類型！', 'error')
             return redirect(url_for('scheduled_notifications'))
+        # --- End of new validation logic ---
 
         # Convert recipient_user_ids list to comma-separated string
         recipient_user_ids_str = ','.join(recipient_user_ids)
@@ -1495,33 +1505,43 @@ def edit_scheduled_notification(notification_id):
         specific_time_str = request.form.get('specific_time')
         weekly_day_str = request.form.get('weekly_day')
 
-        if not all([title, body, recipient_user_ids, schedule_type, specific_time_str]):
-            flash('所有欄位都是必填的！', 'error')
+        # --- Start of new validation logic for edit ---
+        if not all([title, body, recipient_user_ids, schedule_type]):
+            flash('標題、內容、收件人、排程類型為必填欄位！', 'error')
             return redirect(url_for('edit_scheduled_notification', notification_id=notification_id))
 
         specific_date = None
+        specific_time = None
+        weekly_day = None
+
         if schedule_type == 'one_time':
             if not specific_date_str:
-                flash('特定日期排程必須選擇日期！', 'error')
+                flash('「特定日期與時間」排程必須選擇日期和時間！', 'error')
                 return redirect(url_for('edit_scheduled_notification', notification_id=notification_id))
             try:
-                specific_date = datetime.strptime(specific_date_str, '%Y-%m-%d').date()
+                # Parse combined date and time string from flatpickr
+                full_datetime = datetime.strptime(specific_date_str, '%Y-%m-%d %H:%M')
+                specific_date = full_datetime.date()
+                specific_time = full_datetime.time()
             except ValueError:
-                flash('日期格式無效！', 'error')
+                flash('日期時間格式無效！請使用 YYYY-MM-DD HH:MM 格式。', 'error')
                 return redirect(url_for('edit_scheduled_notification', notification_id=notification_id))
-
-        weekly_day = None
-        if schedule_type == 'weekly':
-            if not weekly_day_str:
-                flash('每週重複排程必須選擇星期幾！', 'error')
+        
+        elif schedule_type == 'weekly':
+            if not weekly_day_str or not specific_time_str:
+                flash('「每週重複」排程必須選擇星期和時間！', 'error')
                 return redirect(url_for('edit_scheduled_notification', notification_id=notification_id))
+            
             weekly_day = int(weekly_day_str)
-
-        try:
-            specific_time = dt_time.fromisoformat(specific_time_str)
-        except ValueError:
-            flash('時間格式無效！', 'error')
+            try:
+                specific_time = dt_time.fromisoformat(specific_time_str)
+            except ValueError:
+                flash('時間格式無效！', 'error')
+                return redirect(url_for('edit_scheduled_notification', notification_id=notification_id))
+        else:
+            flash('無效的排程類型！', 'error')
             return redirect(url_for('edit_scheduled_notification', notification_id=notification_id))
+        # --- End of new validation logic for edit ---
 
         # Convert recipient_user_ids list to comma-separated string
         recipient_user_ids_str = ','.join(recipient_user_ids)
