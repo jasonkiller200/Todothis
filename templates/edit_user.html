@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>編輯使用者 - 待辦事項系統</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <style>
         * {
             margin: 0;
@@ -155,7 +156,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="user_key">使用者代碼 <span class="required">*</span></label>
-                        <input type="text" id="user_key" name="user_key" required 
+                        <input type="text" id="user_key" name="user_key" required readonly
                                value="{{ user.user_key }}" maxlength="50">
                     </div>
                     <div class="form-group">
@@ -202,6 +203,19 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label for="manager_id">直屬主管</label>
+                    <select id="manager_id" name="manager_id">
+                        <option value="">-- 無 --</option>
+                        {% for manager in managers %}
+                            <option value="{{ manager.id }}" {% if user.manager_id == manager.id %}selected{% endif %}>
+                                {{ manager.name }} ({{ manager.role }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">選擇此使用者的直屬主管</div>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="avatar">頭像</label>
@@ -218,7 +232,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <!-- Empty group for alignment -->
+                        <label for="notification_enabled">啟用郵件通知</label>
+                        <input type="checkbox" id="notification_enabled" name="notification_enabled" value="1" 
+                               style="width: auto; height: 20px; margin-top: 10px;"
+                               {{ 'checked' if user.notification_enabled else '' }}>
+                        <span class="help-text">啟用後，此使用者將會收到任務相關的郵件通知。</span>
                     </div>
                 </div>
 
@@ -260,7 +278,7 @@
             populateLevels();
             // Set initial values for department and unit
             departmentSelect.value = '{{ user.department }}';
-            populateUnits(departmentSelect.value, '{{ user.unit or '' }}');
+            populateUnits(departmentSelect.value, '{{ user.unit or "" }}');
         } catch (error) {
             console.error('Error fetching organization structure:', error);
             alert('無法載入組織結構數據。');

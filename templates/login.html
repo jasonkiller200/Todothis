@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登入 - 每週待辦事項協作系統</title>
+    <title>登入 - 每週待辦事項管理系統</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <style>
         * {
             margin: 0;
@@ -181,24 +182,27 @@
 
         <form method="POST">
             <div class="form-group">
-                <label for="email">電子郵件</label>
+                <label for="email">電子郵件(請使用公司的，已註冊完成)</label>
                 <input type="email" id="email" name="email" required>
             </div>
 
             <div class="form-group">
-                <label for="password">密碼</label>
+                <label for="password">密碼首次登入使用: password123</label>
                 <input type="password" id="password" name="password" required>
             </div>
 
             <button type="submit" class="login-btn">登入系統</button>
         </form>
 
+        <div style="text-align: center; margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <a href="http://192.168.6.119:5002/" target="_blank" class="login-btn" style="text-decoration: none; background: linear-gradient(135deg, #28a745 0%, #218838 100%);">快速工單規格與料況查詢</a>
+        </div>
+
         <div class="demo-info">
             <h3>🔐 安全功能</h3>
             <div class="security-features">
                 <h4>已實現的安全機制：</h4>
                 <ul>
-                    <li>密碼雜湊加密存儲</li>
                     <li>登入失敗鎖定機制（3次失敗鎖定30分鐘）</li>
                     <li>基於角色的權限控制</li>
                     <li>管理員帳戶管理功能</li>

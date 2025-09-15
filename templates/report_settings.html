@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>週報設定 - 待辦事項系統</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #5A78E6, #42A5F5);
+            color: white;
+            padding: 25px 30px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .form-section, .list-section {
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #5A78E6;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+            margin: 2px;
+        }
+        .btn-primary { background-color: #5A78E6; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 14px; }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .table th, .table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .table th {
+            background-color: #f4f7f9;
+            font-weight: 600;
+        }
+        .status-active { color: #28a745; font-weight: bold; }
+        .status-paused { color: #6c757d; font-weight: bold; }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .alert-error { background-color: #fee; border: 1px solid #fcc; color: #c33; }
+        .alert-success { background-color: #efe; border: 1px solid #cfc; color: #3c3; }
+        .alert-warning { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ 週報排程設定</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">🏠 返回主頁</a>
+        </div>
+        <div class="content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="form-section">
+                <h2>新增排程</h2>
+                <form method="POST" action="{{ url_for('edit_report_schedule', schedule_id=editing_schedule.id) if editing_schedule else url_for('report_settings') }}">
+                    <div class="form-group">
+                        <label for="department_unit">報告單位 (課)</label>
+                        <select id="department_unit" name="department_unit" required>
+                            <option value="">請選擇單位</option>
+                            {% for unit in manageable_units %}
+                                <option value="{{ unit }}" {% if editing_schedule and editing_schedule.department == unit %}selected{% endif %}>{{ unit }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="schedule_day">發送日</label>
+                        <select id="schedule_day" name="schedule_day" required>
+                            {% for i in range(5) %} {# 0-4 for Mon-Fri #}
+                                <option value="{{ i }}" {% if editing_schedule and editing_schedule.schedule_day == i %}selected{% endif %}>星期{{ ["一", "二", "三", "四", "五"][i] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="schedule_time">發送時間</label>
+                        <input type="time" id="schedule_time" name="schedule_time" required value="{{ editing_schedule.schedule_time.strftime('%H:%M') if editing_schedule else '' }}">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center;">
+                        <input type="checkbox" id="require_next_week_tasks" name="require_next_week_tasks" value="true" style="width: auto; margin-right: 10px;" {% if editing_schedule and editing_schedule.require_next_week_tasks %}checked{% endif %}>
+                        <label for="require_next_week_tasks" style="margin-bottom: 0;">要求下週有任務才發送週報(組件專用，他單位不要選)</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ '更新排程' if editing_schedule else '建立排程' }}</button>
+                    {% if editing_schedule %}
+                        <a href="{{ url_for('report_settings') }}" class="btn btn-secondary">取消</a>
+                    {% endif %}
+                </form>
+            </div>
+
+            <div class="list-section">
+                <h2>現有排程</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>報告單位</th>
+                            <th>發送日</th>
+                            <th>發送時間</th>
+                            <th>狀態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for schedule in schedules %}
+                            <tr>
+                                <td>{{ schedule.department }}</td>
+                                <td>星期{{ ["一", "二", "三", "四", "五"][schedule.schedule_day] }}</td>
+                                <td>{{ schedule.schedule_time.strftime('%H:%M') }}</td>
+                                <td class="status-cell {{ 'status-active' if schedule.is_active else 'status-paused' }}">
+                                    {{ "啟用" if schedule.is_active else "暫停" }}
+                                </td>
+                                <td>
+                                    <button class="btn btn-info btn-sm btn-send-now" data-id="{{ schedule.id }}">立即發送</button>
+                                    <button class="btn btn-secondary btn-sm btn-edit" data-id="{{ schedule.id }}">編輯</button> {# New Edit button #}
+                                    {% if schedule.is_active %}
+                                        <button class="btn btn-warning btn-sm btn-toggle" data-id="{{ schedule.id }}">暫停</button>
+                                    {% else %}
+                                        <button class="btn btn-success btn-sm btn-toggle" data-id="{{ schedule.id }}">啟用</button>
+                                    {% endif %}
+                                    <button class="btn btn-danger btn-sm btn-delete" data-id="{{ schedule.id }}">刪除</button>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 20px;">尚未建立任何排程。</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableBody = document.querySelector('.table tbody');
+
+            if (tableBody) {
+                tableBody.addEventListener('click', function(event) {
+                    const target = event.target;
+
+                    // --- Handle Delete --- 
+                    if (target.classList.contains('btn-delete')) {
+                        const scheduleId = target.dataset.id;
+                        if (confirm(`您確定要刪除這個排程嗎？`)) {
+                            fetch(`/api/report_schedule/${scheduleId}`, { method: 'DELETE' })
+                            .then(response => {
+                                if (response.ok) {
+                                    target.closest('tr').remove();
+                                } else {
+                                    response.json().then(err => alert('刪除失敗: ' + (err.error || '未知錯誤')));
+                                }
+                            })
+                            .catch(error => alert('刪除時發生網路錯誤。'));
+                        }
+                    }
+
+                    // --- Handle Toggle Active/Paused ---
+                    if (target.classList.contains('btn-toggle')) {
+                        const scheduleId = target.dataset.id;
+                        fetch(`/api/report_schedule/${scheduleId}/toggle`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.message === '排程狀態已更新') {
+                                const statusCell = target.closest('tr').querySelector('.status-cell');
+                                if (data.is_active) {
+                                    statusCell.textContent = '啟用';
+                                    statusCell.className = 'status-cell status-active';
+                                    target.textContent = '暫停';
+                                    target.className = 'btn btn-warning btn-sm btn-toggle';
+                                } else {
+                                    statusCell.textContent = '暫停';
+                                    statusCell.className = 'status-cell status-paused';
+                                    target.textContent = '啟用';
+                                    target.className = 'btn btn-success btn-sm btn-toggle';
+                                }
+                            } else {
+                                alert('狀態更新失敗: ' + (data.error || '未知錯誤'));
+                            }
+                        })
+                        .catch(error => alert('狀態更新時發生網路錯誤。'));
+                    }
+
+                    // --- Handle Edit ---
+                    if (target.classList.contains('btn-edit')) {
+                        const scheduleId = target.dataset.id;
+                        window.location.href = `/report-settings/edit/${scheduleId}`;
+                    }
+
+                    // --- Handle Send Now ---
+                    if (target.classList.contains('btn-send-now')) {
+                        const scheduleId = target.dataset.id;
+                        if (confirm(`您確定要立即發送此報告嗎？\n這不會影響正常的排程時間。`)) {
+                            target.textContent = '發送中...';
+                            target.disabled = true;
+                            fetch(`/api/report_schedule/${scheduleId}/send_now`, { method: 'POST' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.message) {
+                                    alert(data.message);
+                                } else {
+                                    alert('發送失敗: ' + (data.error || '未知錯誤'));
+                                }
+                            })
+                            .catch(error => alert('發送時發生網路錯誤。'))
+                            .finally(() => {
+                                target.textContent = '立即發送';
+                                target.disabled = false;
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

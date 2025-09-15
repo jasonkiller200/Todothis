@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>報告中心</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <style>
         :root {
             --color-primary: #4facfe;
@@ -47,7 +49,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>📊 報告中心</h1>
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; color: var(--color-primary);">📊 報告中心</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-primary" style="background: #007bff; color: white;">🏠 返回主頁</a>
+        </div>
 
         <div class="report-section">
             <h2>本週報告</h2>
@@ -61,9 +66,7 @@
             <div id="monthly-report-details"></div>
         </div>
 
-        <div class="back-link">
-            <a href="{{ url_for('index') }}">返回主頁</a>
-        </div>
+        
     </div>
 
     <script>

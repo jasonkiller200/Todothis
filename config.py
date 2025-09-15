@@ -23,9 +23,18 @@ DEPARTMENT_STRUCTURE = {
 
 # 輔助對應表：將資料庫中的單位(課)對應到四大部門
 UNIT_TO_MAIN_DEPT_MAP = {
-    '裝一課': '第一廠', '裝二課': '第一廠', '裝三課': '第一廠',
-    '品管課': '第三廠', '資材成本課': '第三廠', '資材管理課': '第三廠',
-    '組件課': '第一廠'
+    # 第一廠
+    '裝一課': '第一廠', 
+    '裝二課': '第一廠', 
+    '組件課': '第一廠',
+    # 第三廠
+    '裝三課': '第三廠',
+    '加工課': '第三廠',
+    # 採購物流部
+    '資材成本課': '採購物流部', 
+    '資材管理課': '採購物流部',
+    # 品保部
+    '品管課': '品保部'
 }
 
 # 登入與帳戶鎖定配置
@@ -52,3 +61,32 @@ class TodoStatus(str, Enum):
 class TodoType(str, Enum):
     CURRENT = "current"
     NEXT = "next"
+
+class MeetingTaskStatus(str, Enum):
+    UNASSIGNED = "unassigned" # 追蹤項目初始狀態，待指派到 Todo
+    ASSIGNED = "assigned"     # 追蹤項目已指派到 Todo
+    IN_PROGRESS_TODO = "in_progress_todo" # 追蹤項目關聯的 Todo 任務進行中
+    UNCOMPLETED_TODO = "uncompleted_todo" # 追蹤項目關聯的 Todo 任務未完成
+    COMPLETED = "completed"   # 會議任務已完成 (Todo 完成後回填)
+    RESOLUTION_ITEM = "resolution-item"
+    RESOLVED_EXECUTING = "resolved_executing" # 決議通過執行，不指派到 Todo
+    AGREED_FINALIZED = "agreed_finalized" # 決議已同意並最終確定
+    CANCELLED = "cancelled" # 新增已取消狀態
+
+class MeetingTaskType(str, Enum):
+    TRACKING = "tracking"
+    RESOLUTION = "resolution"
+
+MEETING_TASK_STATUS_CHINESE = {
+    MeetingTaskStatus.UNASSIGNED.value: "未指派",
+    MeetingTaskStatus.ASSIGNED.value: "已指派",
+    MeetingTaskStatus.IN_PROGRESS_TODO.value: "進行中(主任務)",
+    MeetingTaskStatus.COMPLETED.value: "已完成",
+    MeetingTaskStatus.UNCOMPLETED_TODO.value: "未完成(主任務)",
+    MeetingTaskStatus.RESOLVED_EXECUTING.value: "決議執行中",
+    MeetingTaskStatus.AGREED_FINALIZED.value: "已同意並最終確定",
+    MeetingTaskStatus.CANCELLED.value: "已取消"
+}
+
+# Mail Service API URL
+MAIL_API_URL = "http://192.168.1.231/HFSRAPITS/SendMail/APISend"

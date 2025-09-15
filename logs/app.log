@@ -1,0 +1,24 @@
+2025-07-28 09:03:13,673 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-07-28 09:03:13,678 - INFO - Serving on http://0.0.0.0:5001
+2025-09-13 07:45:57,083 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-09-13 07:45:57,085 - apscheduler.scheduler - INFO - Added job "Run all periodic checks every 5 minutes" to job store "default"
+2025-09-13 07:45:57,085 - apscheduler.scheduler - INFO - Scheduler started
+2025-09-13 07:45:57,086 - apscheduler.scheduler - DEBUG - Looking for jobs to run
+2025-09-13 07:45:57,099 - apscheduler.scheduler - DEBUG - Next wakeup is due at 2025-09-13 07:50:57.083609+08:00 (in 299.984099 seconds)
+2025-09-13 07:50:57,105 - apscheduler.scheduler - DEBUG - Looking for jobs to run
+2025-09-13 07:50:57,106 - apscheduler.executors.default - INFO - Running job "Run all periodic checks every 5 minutes (trigger: interval[0:05:00], next run at: 2025-09-13 07:50:57 CST)" (scheduled at 2025-09-13 07:50:57.083609+08:00)
+2025-09-13 07:50:57,106 - apscheduler.scheduler - DEBUG - Next wakeup is due at 2025-09-13 07:55:57.083609+08:00 (in 299.977307 seconds)
+2025-09-13 07:50:57,176 - apscheduler.executors.default - ERROR - Job "Run all periodic checks every 5 minutes (trigger: interval[0:05:00], next run at: 2025-09-13 07:55:57 CST)" raised an exception
+Traceback (most recent call last):
+  File "C:\app\Todothis_v4\venv\Lib\site-packages\apscheduler\executors\base.py", line 131, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "C:\app\Todothis_v4\scheduler.py", line 280, in run_all_periodic_checks
+    check_overdue_tasks(app, db, User, Todo)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\app\Todothis_v4\scheduler.py", line 58, in check_overdue_tasks
+    body = f"哈囉 {user.username}，\n\n您有以下任務已逾期：\n\n"
+                   ^^^^^^^^^^^^^
+AttributeError: 'User' object has no attribute 'username'
+2025-09-13 07:53:40,257 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-09-13 07:53:40,257 - apscheduler.scheduler - DEBUG - Looking for jobs to run
+2025-09-13 07:53:40,258 - apscheduler.scheduler - DEBUG - No jobs; waiting until a job is added

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>定時通知設定 - 待辦事項系統</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #5A78E6, #42A5F5);
+            color: white;
+            padding: 25px 30px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .form-section, .list-section {
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #5A78E6;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="date"],
+        .form-group input[type="time"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+            margin: 2px;
+        }
+        .btn-primary { background-color: #5A78E6; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-success { background-color: #28a745; color: white; }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .table th, .table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .table th {
+            background-color: #f4f7f9;
+            font-weight: 600;
+        }
+        .status-active { color: #28a745; font-weight: bold; }
+        .status-paused { color: #6c757d; font-weight: bold; }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .alert-error { background-color: #fee; border: 1px solid #fcc; color: #c33; }
+        .alert-success { background-color: #efe; border: 1px solid #cfc; color: #3c3; }
+        .alert-warning { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+    </style>
+    <link href="{{ url_for('static', filename='css/select2.min.css') }}" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ 定時通知設定</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">🏠 返回主頁</a>
+        </div>
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="form-section">
+                <h2>{% if editing_notification %}編輯通知{% else %}新增通知{% endif %}</h2>
+                <form method="POST" action="{{ url_for('edit_scheduled_notification', notification_id=editing_notification.id) if editing_notification else url_for('scheduled_notifications') }}">
+                    <div class="form-group">
+                        <label for="title">通知標題</label>
+                        <input type="text" id="title" name="title" required value="{{ editing_notification.title if editing_notification else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="body">通知內容</label>
+                        <textarea id="body" name="body" required>{{ editing_notification.body if editing_notification else '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="recipient_user_ids">提醒人員(可複選)</label>
+                        <select id="recipient_user_ids" name="recipient_user_ids" multiple="multiple" required style="width: 100%;">
+                            {% for user in assignable_users %}
+                                <option value="{{ user.id }}" {% if editing_notification and user.id|string in editing_notification.recipient_user_ids.split(',') %}selected{% endif %}>{{ user.name }} ({{ user.user_key }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="schedule_type">排程類型</label>
+                        <select id="schedule_type" name="schedule_type">
+                            <option value="one_time" {% if editing_notification and editing_notification.schedule_type == 'one_time' %}selected{% elif not editing_notification %}selected{% endif %}>特定日期與時間</option>
+                            <option value="weekly" {% if editing_notification and editing_notification.schedule_type == 'weekly' %}selected{% endif %}>每週重複</option>
+                        </select>
+                    </div>
+                    <div id="one_time_schedule_fields" class="form-group">
+                        <label for="specific_date">發送日期</label>
+                        <input type="date" id="specific_date" name="specific_date" value="{{ editing_notification.specific_date.strftime('%Y-%m-%d') if editing_notification and editing_notification.specific_date else '' }}">
+                    </div>
+                    <div id="weekly_schedule_fields" class="form-group" style="display: none;">
+                        <label for="weekly_day">每週幾</label>
+                        <select id="weekly_day" name="weekly_day">
+                            <option value="0" {% if editing_notification and editing_notification.weekly_day == 0 %}selected{% endif %}>星期一</option>
+                            <option value="1" {% if editing_notification and editing_notification.weekly_day == 1 %}selected{% endif %}>星期二</option>
+                            <option value="2" {% if editing_notification and editing_notification.weekly_day == 2 %}selected{% endif %}>星期三</option>
+                            <option value="3" {% if editing_notification and editing_notification.weekly_day == 3 %}selected{% endif %}>星期四</option>
+                            <option value="4" {% if editing_notification and editing_notification.weekly_day == 4 %}selected{% endif %}>星期五</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="specific_time">發送時間</label>
+                        <input type="time" id="specific_time" name="specific_time" required value="{{ editing_notification.specific_time.strftime('%H:%M') if editing_notification and editing_notification.specific_time else '' }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">{% if editing_notification %}更新通知{% else %}建立通知{% endif %}</button>
+                    {% if editing_notification %}
+                        <a href="{{ url_for('scheduled_notifications') }}" class="btn btn-secondary">取消</a>
+                    {% endif %}
+                </form>
+            </div>
+
+            <div class="list-section">
+                <h2>現有通知</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>標題</th>
+                            <th>內容</th>
+                            <th>收件人</th>
+                            <th>排程類型</th>
+                            <th>排程時間</th>
+                            <th>狀態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notification in notifications %}
+                            <tr>
+                                <td>{{ notification.title }}</td>
+                                <td>{{ notification.body[:50] }}...</td>
+                                <td>
+                                    {% set recipient_names = [] %}
+                                    {% for recipient_id_str in notification.recipient_user_ids.split(',') %}
+                                        {% set recipient_id = recipient_id_str|int %}
+                                        {% for user in all_users %}
+                                            {% if user.id == recipient_id %}
+                                                {% set _ = recipient_names.append(user.name) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {{ recipient_names|join(', ') }}
+                                </td>
+                                <td>
+                                    {% if notification.schedule_type == 'one_time' %}
+                                        一次性
+                                    {% elif notification.schedule_type == 'weekly' %}
+                                        每週重複
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if notification.schedule_type == 'one_time' %}
+                                        {{ notification.specific_date.strftime('%Y-%m-%d') }} 
+                                    {% elif notification.schedule_type == 'weekly' %}
+                                        星期{{ ["一", "二", "三", "四", "五"][notification.weekly_day] }}
+                                    {% endif %}
+                                    {{ notification.specific_time.strftime('%H:%M') }}
+                                </td>
+                                <td class="status-cell {{ 'status-active' if notification.is_active else 'status-paused' }}">
+                                    {{ "啟用" if notification.is_active else "暫停" }}
+                                </td>
+                                <td>
+                                    <button class="btn btn-secondary btn-sm btn-edit" data-id="{{ notification.id }}">編輯</button>
+                                    {% if notification.is_active %}
+                                        <button class="btn btn-warning btn-sm btn-toggle" data-id="{{ notification.id }}">暫停</button>
+                                        <button class="btn btn-info btn-sm btn-send-now" data-id="{{ notification.id }}">發送</button>
+                                    {% else %}
+                                        <button class="btn btn-success btn-sm btn-toggle" data-id="{{ notification.id }}">啟用</button>
+                                    {% endif %}
+                                    <button class="btn btn-danger btn-sm btn-delete" data-id="{{ notification.id }}">刪除</button>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 20px;">尚未建立任何通知。</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/flatpickr/flatpickr.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/flatpickr/zh-tw.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            $('#recipient_user_ids').select2({
+                placeholder: "選擇提醒人員",
+                allowClear: true
+            });
+
+            let flatpickrInstance;
+
+            function initializeFlatpickr() {
+                flatpickrInstance = flatpickr("#specific_date", {
+                    locale: "zh-tw",
+                    dateFormat: "Y-m-d",
+                    defaultDate: "{{ editing_notification.specific_date.strftime('%Y-%m-%d') if editing_notification and editing_notification.specific_date else 'today' }}"
+                });
+            }
+
+            function toggleScheduleFields() {
+                if ($('#schedule_type').val() === 'one_time') {
+                    $('#one_time_schedule_fields').show();
+                    $('#weekly_schedule_fields').hide();
+                    $('#specific_date').prop('required', true);
+                    $('#weekly_day').prop('required', false);
+                    if (!flatpickrInstance) {
+                        initializeFlatpickr();
+                    } else {
+                        flatpickrInstance.setDate($('#specific_date').val()); // Ensure date is set if re-showing
+                    }
+                } else {
+                    $('#one_time_schedule_fields').hide();
+                    $('#weekly_schedule_fields').show();
+                    $('#specific_date').prop('required', false);
+                    $('#weekly_day').prop('required', true);
+                    if (flatpickrInstance) {
+                        flatpickrInstance.destroy();
+                        flatpickrInstance = null;
+                    }
+                }
+            }
+
+            // Initial setup
+            if ($('#schedule_type').val() === 'one_time') {
+                initializeFlatpickr();
+            }
+            toggleScheduleFields();
+
+            $('#schedule_type').change(toggleScheduleFields);
+
+            const tableBody = document.querySelector('.table tbody');
+            if (tableBody) {
+                tableBody.addEventListener('click', function(event) {
+                    const target = event.target;
+                    const notificationId = target.dataset.id;
+
+                    if (target.classList.contains('btn-edit')) {
+                        window.location.href = `/scheduled-notifications/edit/${notificationId}`;
+                    }
+
+                    if (target.classList.contains('btn-toggle')) {
+                        fetch(`/api/scheduled_notification/${notificationId}/toggle`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.message) {
+                                window.location.reload();
+                            } else {
+                                alert('狀態更新失敗: ' + (data.error || '未知錯誤'));
+                            }
+                        })
+                        .catch(error => alert('狀態更新時發生網路錯誤。'));
+                    }
+
+                    if (target.classList.contains('btn-delete')) {
+                        if (confirm(`您確定要刪除這個通知嗎？`)) {
+                            fetch(`/api/scheduled_notification/${notificationId}`, { method: 'DELETE' })
+                            .then(response => {
+                                if (response.ok) {
+                                    target.closest('tr').remove();
+                                } else {
+                                    response.json().then(err => alert('刪除失敗: ' + (err.error || '未知錯誤')));
+                                }
+                            })
+                            .catch(error => alert('刪除時發生網路錯誤。'));
+                        }
+                    }
+
+                    if (target.classList.contains('btn-send-now')) {
+                        if (confirm(`您確定要手動發送這個通知嗎？`)) {
+                            fetch(`/api/scheduled_notification/${notificationId}/send_now`, { method: 'POST' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.message) {
+                                    alert(data.message);
+                                    // Optionally reload or update the UI to reflect the send action
+                                    // window.location.reload(); 
+                                } else {
+                                    alert('手動發送失敗: ' + (data.error || '未知錯誤'));
+                                }
+                            })
+                            .catch(error => alert('手動發送時發生網路錯誤。'));
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

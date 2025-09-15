@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>使用者管理 - 待辦事項系統</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <style>
         * {
             margin: 0;
@@ -253,6 +254,7 @@
                         <th>權限等級</th>
                         <th>聯絡資訊</th>
                         <th>狀態</th>
+                        <th>通知</th>
                         <th>最後登入</th>
                         <th>操作</th>
                     </tr>
@@ -301,8 +303,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if user.last_login %}
-                                {{ user.last_login.strftime('%m/%d %H:%M') }}
+                            {% if user.notification_enabled %}
+                                <span class="status-active">🔔 啟用</span>
+                            {% else %}
+                                <span class="status-inactive">🔕 停用</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.last_login_taiwan %}
+                                {{ user.last_login_taiwan.strftime('%m/%d %H:%M') }}
                             {% else %}
                                 <span style="color: #999;">從未登入</span>
                             {% endif %}
@@ -362,7 +371,7 @@
 
         function unlockUser(userId) {
             if (confirm('確定要解鎖此使用者嗎？')) {
-                fetch(`/admin/user/${userId}/unlock`, {
+                fetch(`/unlock_user_account/${userId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -399,7 +408,7 @@
 
         function deleteUser(userId, userName) {
             if (confirm(`確定要刪除使用者「${userName}」嗎？\n\n此操作將同時刪除該使用者的所有待辦事項，且無法復原！`)) {
-                fetch(`/admin/users/${userId}/delete`, {
+                fetch(`/delete_user/${userId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

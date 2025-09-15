@@ -29,7 +29,6 @@ if (Test-Path "venv") {
         exit 1
     }
 }
-
 Write-Host ""
 
 # 啟動虛擬環境
@@ -65,7 +64,7 @@ if ($LASTEXITCODE -eq 0) {
 
 Write-Host ""
 Write-Host "🚀 啟動應用程序..." -ForegroundColor Green
-Write-Host "應用程序將在 http://localhost:5000 運行" -ForegroundColor Cyan
+Write-Host "應用程序將在 http://localhost:5001 運行" -ForegroundColor Cyan
 Write-Host "按 Ctrl+C 停止服務器" -ForegroundColor Yellow
 Write-Host ""
 

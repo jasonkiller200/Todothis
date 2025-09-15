@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會議任務指派與記錄</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flatpickr/flatpickr.min.css') }}">
+    <style>
+        :root {
+            --color-primary: #4facfe;
+            --color-secondary: #00f2fe;
+            --color-background: #f0f2f5;
+            --color-text: #333;
+            --color-white: #fff;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; color: var(--color-text); }
+        .container { max-width: 1400px; margin: 20px auto; background: var(--color-white); border-radius: 15px; box-shadow: var(--shadow); padding: 30px; }
+        h1 { text-align: center; color: var(--color-primary); margin-bottom: 30px; }
+        .section { margin-bottom: 40px; background: var(--color-background); padding: 25px; border-radius: 10px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
+        .section h2 { color: var(--color-secondary); margin-bottom: 20px; text-align: center; }
+
+        /* Form Styling */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input[type="text"],
+        .form-group input[type="date"],
+        .form-group input[type="datetime-local"],
+        .form-group input[type="time"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1.1em; /* 放大字體 */
+            margin-top: 5px;
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group button {
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+            color: var(--color-white);
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .form-group button:hover { opacity: 0.9; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .form-row { display: flex; gap: 20px; margin-bottom: 15px; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+
+        /* Error Message Styling */
+        .error-message { color: red; margin-bottom: 10px; font-size: 0.9em; }
+
+        /* Table Styling */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: var(--color-white); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; font-size: 0.9em; vertical-align: middle; word-wrap: break-word; white-space: normal; }
+        th { background: linear-gradient(90deg, var(--color-primary), var(--color-secondary)); color: var(--color-white); font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8f8f8; }
+        tr:hover { background-color: #f1f1f1; }
+        .no-data { text-align: center; padding: 30px; color: #666; font-size: 1.1em; }
+        .back-link { display: block; text-align: center; margin-top: 30px; }
+        .back-link a { color: var(--color-primary); text-decoration: none; font-weight: bold; padding: 10px 20px; border: 2px solid var(--color-primary); border-radius: 8px; transition: all 0.3s; }
+        .back-link a:hover { background: var(--color-primary); color: var(--color-white); }
+
+        /* Modal Styling */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 30px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); position: relative; }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; }
+        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.7em; font-weight: bold; }
+        .status-pending { background: #f8d7da; color: #721c24; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-in-progress { background: #fff3cd; color: #856404; }
+        .status-unassigned { background: #e0e0e0; color: #555; }
+        .status-assigned { background: #cce5ff; color: #004085; }
+        .status-resolution-item { background: #d1ecf1; color: #0c5460; }
+
+        .action-button, .assign-button {
+            border: none;
+            padding: 3px 8px; /* 調整 padding 使按鈕變小 */
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin: 2px;
+            color: white;
+            transition: background-color 0.2s ease;
+        }
+        .assign-button { background: #28a745; }
+        .assign-button:hover { background: #218838; }
+        .edit-button { background: #ffc107; }
+        .edit-button:hover { background: #e0a800; }
+        .delete-button { background: #dc3545; }
+        .delete-button:hover { background: #c82333; }
+        .save-button { background: #007bff; }
+        .save-button:hover { background: #0069d9; }
+        .agree-button { background: #28a745; }
+        .agree-button:hover { background: #218838; }
+        .task-actions { width: 120px; text-align: center; }
+        .history-column { display: none; }
+
+        .date-input-table { width: 150px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+        .meeting-history-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+        .meeting-history-list li { background: #e9ecef; margin-bottom: 8px; padding: 10px 15px; border-radius: 8px; cursor: pointer; transition: background-color 0.3s ease; display: flex; justify-content: space-between; align-items: center; }
+        .meeting-history-list li:hover { background-color: #dcdcdc; }
+        .meeting-history-list li span { font-size: 0.9em; color: #555; }
+        .meeting-history-list li strong { color: var(--color-primary); }
+        
+        .meeting-section { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .meeting-section h3 { color: var(--color-primary); margin-bottom: 10px; text-align: center; }
+        .meeting-section p { margin-bottom: 5px; font-size: 0.95em; color: #444; }
+        .meeting-section h4 { color: var(--color-secondary); margin-top: 20px; margin-bottom: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1 style="margin: 0; color: var(--color-primary);">📝 會議任務指派與記錄</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-primary" style="background: #007bff; color: white;">🏠 返回主頁</a>
+        </div>
+
+        <div class="section">
+            <h2>新增會議任務</h2>
+            <form id="add-meeting-task-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="meeting-topic">會議主題</label>
+                        <input type="text" id="meeting-topic" name="meeting_topic" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="meeting-date">會議日期與時間</label>
+                        <input type="text" id="meeting-date" name="meeting_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="meeting-location">會議地點</label>
+                        <input type="text" id="meeting-location" name="location">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="chairman-user-key">主席</label>
+                        <select id="chairman-user-key" name="chairman_user_key" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="recorder-user-key">紀錄</label>
+                        <select id="recorder-user-key" name="recorder_user_key" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="attendees-user-keys">出席人員</label>
+                        <select id="attendees-user-keys" name="attendees_user_keys" multiple required></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="discussion-topic">討論議題</label>
+                        <textarea id="discussion-topic" name="discussion_topic" rows="1" oninput="autoResizeTextarea(this)"></textarea>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button type="button" id="update-discussion-topic-button">更新討論議題</button>
+                </div>
+                <hr>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="task-type">任務類型</label>
+                        <select id="task-type" name="task_type" required>
+                            <option value="tracking">追蹤項目</option>
+                            <option value="resolution">決議項目</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="assigned-to-user-key">主辦者 (負責人員)</label>
+                        <select id="assigned-to-user-key" name="assigned_to_user_key" required></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="controller-user-key">管制者 (必選)</label>
+                        <select id="controller-user-key" name="controller_user_key"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="expected-completion-date">預計完成日期</label>
+                        <input type="date" id="expected-completion-date" name="expected_completion_date">
+                        <small>追蹤項目可後續填寫，決議項目必填</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="task-description">任務事項</label>
+                    <textarea id="task-description" name="task_description" required></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit">新增記錄</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>會議歷史記錄 (選擇載入)</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter-year">年份</label>
+                    <select id="filter-year" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-month">月份</label>
+                    <select id="filter-month" class="form-control"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="meeting-history-select">選擇歷史會議</label>
+                <select id="meeting-history-select" class="form-control">
+                    <option value="">請選擇一個會議</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>現有會議任務記錄</h2>
+            <div class="form-group" style="text-align: right;">
+                <input type="checkbox" id="toggle-history-log">
+                <label for="toggle-history-log">顯示履歷</label>
+                <button id="export-discussion-pdf-button" class="action-button save-button" style="margin-left: 10px;">匯出議題 PDF</button>
+                <button id="export-pdf-button" class="action-button save-button" style="margin-left: 10px;">匯出任務 PDF</button>
+            </div>
+            <div id="meeting-records-container">
+                <p class="no-data">載入中...</p>
+            </div>
+        </div>
+
+        
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="edit-task-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>編輯會議任務</h2>
+            <form id="edit-task-form">
+                <input type="hidden" id="edit-task-id">
+                <div class="form-group">
+                    <label for="edit-task-description">任務事項</label>
+                    <textarea id="edit-task-description" name="task_description" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-assigned-to-user-key">主辦者 (負責人員)</label>
+                    <select id="edit-assigned-to-user-key" name="assigned_to_user_key" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-controller-user-key">管制者</label>
+                    <select id="edit-controller-user-key" name="controller_user_key"></select>
+                </div>
+                <div class="form-group">
+                    <button type="submit">儲存變更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentSelectedMeetingTopic = null;
+        let currentSelectedMeetingDate = null;
+        let currentDiscussionItemId = null; // 新增討論議題 ID
+        let allUsersData = [];
+
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return str.toString()
+                .replace(/&/g, '&')
+                .replace(/</g, '<')
+                .replace(/>/g, '>')
+                .replace(/"/g, '"')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'unassigned': '待指派',
+                'assigned': '已指派',
+                'resolution_item': '決議項目',
+                'resolved_executing': '決議通過執行',
+                'agreed_finalized': '已同意並最終確定',
+                'completed': '已完成',
+                'in_progress_todo': '進行中',
+                'uncompleted_todo': '未完成'
+            };
+            return statusMap[status] || status;
+        }
+
+        function getStatusBadgeClass(status) {
+            const classMap = {
+                'unassigned': 'status-unassigned',
+                'assigned': 'status-assigned',
+                'resolution_item': 'status-resolution-item',
+                'resolved_executing': 'status-assigned',
+                'agreed_finalized': 'status-completed',
+                'completed': 'status-completed'
+            };
+            return classMap[status] || 'status-pending';
+        }
+
+        function formatLocalDateToYYYYMMDD(date) {
+            if (!date) return '';
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateForInput(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return formatLocalDateToYYYYMMDD(date);
+        }
+
+        function autoResizeTextarea(element) {
+            element.style.height = 'auto';
+            element.style.height = (element.scrollHeight) + 'px';
+        }
+
+        async function saveTaskDescription(taskId, newDescription) {
+            if (!newDescription.trim()) {
+                alert('任務事項不可為空。');
+                return false;
+            }
+            try {
+                const response = await fetch(`/api/meeting_task/${taskId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_description: newDescription })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert(result.message);
+                    return true;
+                } else {
+                    alert('更新失敗: ' + result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error updating task:', error);
+                alert('更新任務時發生錯誤。');
+                return false;
+            }
+        }
+
+        async function populateYearMonthFilters() {
+            const yearSelect = document.getElementById('filter-year');
+            const monthSelect = document.getElementById('filter-month');
+
+            // 清空現有選項
+            yearSelect.innerHTML = '';
+            monthSelect.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/meeting_available_dates');
+                const data = await response.json();
+                const availableYears = data.years;
+                const availableMonths = data.months;
+
+                const currentYear = new Date().getFullYear();
+                const currentMonth = new Date().getMonth() + 1;
+
+                // 填充年份下拉選單
+                if (availableYears.length > 0) {
+                    availableYears.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        yearSelect.appendChild(option);
+                    });
+                    // 預設選擇當前年份，如果資料庫中有該年份
+                    if (availableYears.includes(currentYear)) {
+                        yearSelect.value = currentYear;
+                    } else {
+                        yearSelect.value = availableYears[0]; // 否則選擇第一個可用的年份
+                    }
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '無可用年份';
+                    yearSelect.appendChild(option);
+                }
+
+                // 填充月份下拉選單
+                if (availableMonths.length > 0) {
+                    availableMonths.forEach(month => {
+                        const option = document.createElement('option');
+                        option.value = month;
+                        option.textContent = month + '月';
+                        monthSelect.appendChild(option);
+                    });
+                    // 預設選擇當前月份，如果資料庫中有該月份
+                    if (availableMonths.includes(currentMonth)) {
+                        monthSelect.value = currentMonth;
+                    } else {
+                        monthSelect.value = availableMonths[0]; // 否則選擇第一個可用的月份
+                    }
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '無可用月份';
+                    monthSelect.appendChild(option);
+                }
+
+            } catch (error) {
+                console.error('Error loading available meeting dates:', error);
+                // 如果載入失敗，顯示錯誤訊息或預設選項
+                yearSelect.innerHTML = '<option value="">載入失敗</option>';
+                monthSelect.innerHTML = '<option value="">載入失敗</option>';
+            }
+        }
+
+        async function loadUsersForSelects() {
+            try {
+                const response = await fetch('/api/all_users');
+                allUsersData = await response.json();
+                const selects = document.querySelectorAll('select[name="chairman_user_key"], select[name="recorder_user_key"], select[name="assigned_to_user_key"], select[name="controller_user_key"], select[name="attendees_user_keys"]');
+                
+                selects.forEach(select => {
+                    select.innerHTML = '';
+                    if (select.name === 'controller_user_key') {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '請選擇';
+                        select.appendChild(emptyOption);
+                    }
+
+                    if (select.id === 'chairman-user-key') {
+                        const chairmanCandidates = allUsersData.filter(user => 
+                            user.level === 'executive-manager' || 
+                            user.level === 'plant-manager' || 
+                            user.level === 'manager'
+                        );
+                        chairmanCandidates.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.user_key;
+                            option.textContent = `${user.name} (${user.role})`;
+                            select.appendChild(option);
+                        });
+                        let defaultChairmanKey = '';
+                        const execManagerUser = chairmanCandidates.find(user => user.user_key === 'exec_manager' && user.level === 'executive-manager');
+                        if (execManagerUser) {
+                            defaultChairmanKey = execManagerUser.user_key;
+                        } else {
+                            const firstExecManager = chairmanCandidates.find(user => user.level === 'executive-manager');
+                            if (firstExecManager) {
+                                defaultChairmanKey = firstExecManager.user_key;
+                            }
+                        }
+                        select.value = defaultChairmanKey;
+                    } else if (select.id === 'recorder-user-key') {
+                        const recorderCandidates = allUsersData.filter(user => 
+                            user.level === 'section-chief' || 
+                            user.level === 'deputy-section-chief' || 
+                            user.level === 'team-leader'
+                        );
+                        recorderCandidates.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.user_key;
+                            option.textContent = `${user.name} (${user.role})`;
+                            select.appendChild(option);
+                        });
+                        // 預設選擇第一個可用的紀錄人員，如果沒有則為空
+                        if (recorderCandidates.length > 0) {
+                            select.value = recorderCandidates[0].user_key;
+                        } else {
+                            select.value = '';
+                        }
+                    } else if (select.id === 'assigned-to-user-key') {
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '請選擇';
+                        select.appendChild(emptyOption);
+
+                        allUsersData.forEach(user => {
+                            if (user.level !== 'admin') {
+                                const option = document.createElement('option');
+                                option.value = user.user_key;
+                                option.textContent = `${user.name} (${user.role})`;
+                                select.appendChild(option);
+                            }
+                        });
+                        select.value = '';
+                    } else { // This block handles attendees_user_keys
+                        allUsersData.forEach(user => {
+                            if (user.level !== 'admin') {
+                                const option = document.createElement('option');
+                                option.value = user.user_key;
+                                option.textContent = `${user.name} (${user.role})`;
+                                select.appendChild(option);
+                            }
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+                alert('無法載入使用者列表。');
+            }
+        }
+
+        function getUserNameByKey(userKey) {
+            const user = allUsersData.find(u => u.user_key === userKey);
+            return user ? `${user.name} (${user.role})` : '未知使用者';
+        }
+
+        async function loadMeetingTasks(filterTopic = null, filterDate = null) {
+            const container = document.getElementById('meeting-records-container');
+            container.innerHTML = '';
+            if (!filterTopic && !filterDate) {
+                container.innerHTML = '<p class="no-data">請從上方選擇一個會議以查看其任務記錄。</p>';
+                currentSelectedMeetingTopic = null;
+                currentSelectedMeetingDate = null;
+                return;
+            }
+
+            currentSelectedMeetingTopic = filterTopic;
+            currentSelectedMeetingDate = filterDate;
+            try {
+                let url = '/api/meeting_tasks_list';
+                const params = new URLSearchParams();
+                if (filterTopic) params.append('meeting_topic', filterTopic);
+                if (filterDate) params.append('meeting_date', filterDate);
+                if (params.toString()) url += `?${params.toString()}`;
+
+                const response = await fetch(url);
+                let tasks = await response.json();
+
+                // 移除前端過濾邏輯，因為後端已經處理了過濾
+                // if (filterTopic && filterDate) {
+                //     tasks = tasks.filter(task => 
+                //         task.meeting_topic === filterTopic && 
+                //         new Date(task.meeting_date).toISOString().split('T')[0] === new Date(filterDate).toISOString().split('T')[0]
+                //     );
+                // }
+
+                if (tasks.length === 0) {
+                    container.innerHTML = '<p class="no-data">暫無會議任務記錄。</p>';
+                    return;
+                }
+
+                const meetings = {};
+                tasks.forEach(task => {
+                    const meetingKey = `${task.meeting_topic}-${task.meeting_date}`;
+                    if (!meetings[meetingKey]) {
+                        meetings[meetingKey] = {
+                            meeting_topic: task.meeting_topic,
+                            meeting_date: task.meeting_date,
+                            chairman_name: task.chairman_name,
+                            attendees_names: task.attendees_names,
+                            recorder_name: task.recorder_name, // 新增 recorder_name
+                            discussion_topic: task.discussion_topic, // 新增 discussion_topic
+                            tracking_items: [],
+                            resolution_items: []
+                        };
+                    }
+                    if (task.task_type === 'tracking') {
+                        meetings[meetingKey].tracking_items.push(task);
+                    } else {
+                        meetings[meetingKey].resolution_items.push(task);
+                    }
+                });
+
+                for (const meetingKey in meetings) {
+                    const meeting = meetings[meetingKey];
+                    const meetingSection = document.createElement('div');
+                    meetingSection.classList.add('meeting-section');
+
+                    const attendeesText = meeting.attendees_names && Array.isArray(meeting.attendees_names) ? meeting.attendees_names.join(', ') : '無';
+
+                    meetingSection.innerHTML = `
+                        <h3>會議主題: ${meeting.meeting_topic}</h3>
+                        <p><strong>會議日期:</strong> ${new Date(meeting.meeting_date).toLocaleDateString('zh-TW')}</p>
+                        <p><strong>主席:</strong> ${meeting.chairman_name}</p>
+                        <p><strong>紀錄:</strong> ${meeting.recorder_name || '無'}</p>
+                        <p><strong>出席人員:</strong> ${attendeesText}</p>
+
+                        <h4>追蹤項目</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>任務事項</th>
+                                    <th>主辦者</th>
+                                    <th>管制者</th>
+                                    <th>預計完成日期</th>
+                                    <th>實際完成日期</th>
+                                    <th>狀態</th>
+                                    <th class="history-column">履歷</th>
+                                    <th class="task-actions">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${meeting.tracking_items.length > 0 ? meeting.tracking_items.map(task => `
+                                    <tr data-task-id="${task.id}">
+                                        <td class="task-description-cell">${task.task_description}</td>
+                                        <td>${task.assigned_to_name}</td>
+                                        <td>${task.controller_name || '無'}</td>
+                                        <td>
+                                            ${task.is_assigned_to_todo ? 
+                                                (task.expected_completion_date ? new Date(task.expected_completion_date).toLocaleDateString('zh-TW') : '未設定') :
+                                                `<input type="date" class="date-input-table" value="${formatDateForInput(task.expected_completion_date)}">
+                                                 <button class="assign-button" data-task-id="${task.id}">確認指派</button>`
+                                            }
+                                        </td>
+                                        <td>${task.actual_completion_date ? new Date(task.actual_completion_date).toLocaleDateString('zh-TW') : '未完成'}</td>
+                                        <td><span class="status-badge ${getStatusBadgeClass(task.status)}">${getStatusText(task.status)}</span></td>
+                                        <td class="history-column">
+                                            ${task.history_log && task.history_log.length > 0 ? 
+                                                `<div class="todo-history">
+                                                    ${task.history_log.map(entry => {
+                                                        let eventText = '';
+                                                        const date = new Date(entry.timestamp);
+                                                        const timestamp = date.toLocaleString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Asia/Taipei' });
+                                                        const actorName = entry.actor ? `由 ${escapeHTML(entry.actor.name)}` : '';
+
+                                                        if (entry.event_type === 'created') {
+                                                            eventText = `任務已建立`;
+                                                        } else if (entry.event_type === 'updated') {
+                                                            eventText = `${actorName} 更新了任務事項`;
+                                                        } else if (entry.event_type === 'assigned_to_todo') {
+                                                            const assignedToName = escapeHTML(entry.details.assigned_to_user.name);
+                                                            const assignedByName = escapeHTML(entry.details.assigned_by_user.name);
+                                                            eventText = `由 ${assignedByName} 指派給 ${assignedToName} (已轉為待辦事項)`;
+                                                        } else if (entry.event_type === 'agreed_finalized') {
+                                                            eventText = `${actorName} 同意並最終確定了決議`;
+                                                        }
+                                                        return `<div class="history-item">${eventText} (${timestamp})</div>`;
+                                                    }).join('')}
+                                                </div>` : '無履歷'
+                                            }
+                                        </td>
+                                        <td class="task-actions">
+                                            ${!task.is_assigned_to_todo ? 
+                                                `<button class="action-button edit-button" 
+                                                         data-task-id="${task.id}" 
+                                                         data-task-description="${escapeHTML(task.task_description)}"
+                                                         data-assigned-to-key="${task.assigned_to_user_key || ''}"
+                                                         data-controller-key="${task.controller_user_key || ''}">編輯</button>
+                                                 <button class="action-button delete-button" data-task-id="${task.id}">刪除</button>` : ''
+                                            }
+                                        </td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="7" class="no-data">暫無追蹤項目。</td></tr>'}
+                            </tbody>
+                        </table>
+
+                        <h4>決議項目</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>任務事項</th>
+                                    <th>主辦者</th>
+                                    <th>管制者</th>
+                                    <th>開始執行日期</th>
+                                    <th>狀態</th>
+                                    <th class="history-column">履歷</th>
+                                    <th class="task-actions">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${meeting.resolution_items.length > 0 ? meeting.resolution_items.map(task => `
+                                    <tr data-task-id="${task.id}">
+                                        <td class="task-description-cell">${task.task_description}</td>
+                                        <td>${task.assigned_to_name}</td>
+                                        <td>${task.controller_name || '無'}</td>
+                                        <td>${task.expected_completion_date ? new Date(task.expected_completion_date).toLocaleDateString('zh-TW') : '未設定'}</td>
+                                        <td><span class="status-badge ${getStatusBadgeClass(task.status)}">${getStatusText(task.status)}</span></td>
+                                        <td class="history-column">
+                                            ${task.history_log && task.history_log.length > 0 ? 
+                                                `<div class="todo-history">
+                                                    ${task.history_log.map(entry => {
+                                                        let eventText = '';
+                                                        const date = new Date(entry.timestamp);
+                                                        const timestamp = date.toLocaleString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Asia/Taipei' });
+                                                        const actorName = entry.actor ? `由 ${escapeHTML(entry.actor.name)}` : '';
+
+                                                        if (entry.event_type === 'created') {
+                                                            eventText = `任務已建立`;
+                                                        } else if (entry.event_type === 'updated') {
+                                                            eventText = `${actorName} 更新了任務事項`;
+                                                        } else if (entry.event_type === 'assigned_to_todo') {
+                                                            const assignedToName = escapeHTML(entry.details.assigned_to_user.name);
+                                                            const assignedByName = escapeHTML(entry.details.assigned_by_user.name);
+                                                            eventText = `由 ${assignedByName} 指派給 ${assignedToName} (已轉為待辦事項)`;
+                                                        } else if (entry.event_type === 'agreed_finalized') {
+                                                            eventText = `${actorName} 同意並最終確定了決議`;
+                                                        }
+                                                        return `<div class="history-item">${eventText} (${timestamp})</div>`;
+                                                    }).join('')}
+                                                </div>` : '無履歷'
+                                            }
+                                        </td>
+                                        <td class="task-actions">
+                                            ${task.status === 'resolved_executing' ? 
+                                                `<button class="action-button agree-button" data-task-id="${task.id}">同意</button>` : ''
+                                            }
+                                            ${task.status !== 'agreed_finalized' ? 
+                                                `<button class="action-button edit-button" 
+                                                         data-task-id="${task.id}" 
+                                                         data-task-description="${escapeHTML(task.task_description)}"
+                                                         data-assigned-to-key="${task.assigned_to_user_key || ''}"
+                                                         data-controller-key="${task.controller_user_key || ''}">編輯</button>
+                                                 <button class="action-button delete-button" data-task-id="${task.id}">刪除</button>` : ''
+                                            }
+                                        </td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="6" class="no-data">暫無決議項目。</td></tr>'}
+                            </tbody>
+                        </table>
+                        <hr style="margin: 20px 0; border-color: #eee;">
+                    `;
+                    container.appendChild(meetingSection);
+                }
+            } catch (error) {
+                console.error('Error loading meeting tasks:', error);
+                document.getElementById('meeting-records-container').innerHTML = '<p class="no-data">無法載入會議任務記錄。</p>';
+            }
+        }
+
+        async function loadMeetingHistory(year = null, month = null) {
+            try {
+                let url = '/api/meeting_history';
+                const params = new URLSearchParams();
+                if (year) params.append('year', year);
+                if (month) params.append('month', month);
+                if (params.toString()) url += `?${params.toString()}`;
+
+                const response = await fetch(url);
+                const history = await response.json();
+                const select = document.getElementById('meeting-history-select');
+                select.innerHTML = '<option value="">請選擇一個會議</option>';
+                if (history.length === 0) {
+                    return;
+                }
+                history.forEach(meeting => {
+                    const option = document.createElement('option');
+                    // 將 meeting_topic 和 meeting_date 組合作為 value
+                    option.value = `${meeting.meeting_topic}|${meeting.meeting_date}`;
+                    option.textContent = `${meeting.meeting_topic} - ${meeting.chairman_name} (${meeting.meeting_date})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading meeting history:', error);
+                const select = document.getElementById('meeting-history-select');
+                select.innerHTML = '<option value="">無法載入歷史記錄</option>';
+            }
+        }
+
+        
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // --- START: Add date validation --- 
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to midnight to compare dates correctly
+            const todayString = today.toISOString().split('T')[0];
+
+            function setupDateInputValidation(dateInput) {
+                if (!dateInput) return;
+
+                // 1. Set min attribute to prevent selecting past dates
+                // dateInput.min = todayString;
+
+                // 2. Add event listener to check for weekends
+                dateInput.addEventListener('change', function() {
+                    const selectedDate = new Date(this.value + 'T00:00:00');
+                    const dayOfWeek = selectedDate.getDay();
+
+                    if (dayOfWeek === 0 || dayOfWeek === 6) { // 0 = Sunday, 6 = Saturday
+                        alert('預計完成日期不能是週末，請選擇週一至週五。');
+                        this.value = '';
+                    }
+                });
+            }
+
+            // Apply validation to all date inputs on the page
+            document.querySelectorAll('input[type="date"]').forEach(setupDateInputValidation);
+            // --- END: Add date validation ---
+
+            await loadUsersForSelects();
+            await populateYearMonthFilters();
+
+            // Initialize Flatpickr for meeting-date input
+            flatpickr("#meeting-date", {
+                enableTime: true,
+                noCalendar: false,
+                dateFormat: "Y-m-d H:i",
+                minuteIncrement: 15,
+                time_24hr: true, // Use 24-hour format
+                locale: "zh_tw" // Set locale to Traditional Chinese (corrected from zh-tw)
+            });
+
+            const initialYear = document.getElementById('filter-year').value;
+            const initialMonth = document.getElementById('filter-month').value;
+            await loadMeetingHistory(initialYear, initialMonth);
+            await loadMeetingTasks();
+
+            // 根據表單的初始值設定 currentSelectedMeetingTopic 和 currentSelectedMeetingDate
+            const initialMeetingTopic = document.getElementById('meeting-topic').value;
+            const initialMeetingDate = document.getElementById('meeting-date').value;
+            if (initialMeetingTopic && initialMeetingDate) {
+                currentSelectedMeetingTopic = initialMeetingTopic;
+                currentSelectedMeetingDate = initialMeetingDate;
+            }
+
+            // 處理履歷顯示/隱藏
+            const toggleHistoryLogCheckbox = document.getElementById('toggle-history-log');
+            function updateHistoryColumnVisibility() {
+                const historyColumns = document.querySelectorAll('.history-column');
+                historyColumns.forEach(col => {
+                    col.style.display = toggleHistoryLogCheckbox.checked ? 'table-cell' : 'none';
+                });
+            }
+
+            // 初始載入時設定顯示狀態
+            updateHistoryColumnVisibility();
+
+            // 監聽勾選框變化
+            toggleHistoryLogCheckbox.addEventListener('change', updateHistoryColumnVisibility);
+
+            // 匯出 PDF 按鈕事件監聽器
+            document.getElementById('export-pdf-button').addEventListener('click', async function() {
+                if (!currentSelectedMeetingTopic || !currentSelectedMeetingDate) {
+                    alert('請先選擇一個會議以匯出 PDF。');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/export_meeting_tasks_pdf', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            meeting_topic: currentSelectedMeetingTopic,
+                            meeting_date: currentSelectedMeetingDate
+                        }),
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `會議任務_${currentSelectedMeetingTopic}_${currentSelectedMeetingDate}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        alert('PDF 匯出成功！');
+                    } else {
+                        const errorData = await response.json();
+                        alert('PDF 匯出失敗: ' + (errorData.error || '未知錯誤'));
+                    }
+                } catch (error) {
+                    console.error('匯出 PDF 時發生錯誤:', error);
+                    alert('匯出 PDF 時發生網路錯誤。');
+                }
+            });
+
+            // 匯出議題 PDF 按鈕事件監聽器
+            document.getElementById('export-discussion-pdf-button').addEventListener('click', async function() {
+                if (!currentSelectedMeetingTopic || !currentSelectedMeetingDate) {
+                    alert('請先選擇一個會議以匯出議題 PDF。');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/export_discussion_items_pdf', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            meeting_topic: currentSelectedMeetingTopic,
+                            meeting_date: currentSelectedMeetingDate
+                        }),
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `會議議題_${currentSelectedMeetingTopic}_${currentSelectedMeetingDate}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        alert('議題 PDF 匯出成功！');
+                    } else {
+                        const errorData = await response.json();
+                        alert('議題 PDF 匯出失敗: ' + (errorData.error || '未知錯誤'));
+                    }
+                } catch (error) {
+                    console.error('匯出議題 PDF 時發生錯誤:', error);
+                    alert('匯出議題 PDF 時發生網路錯誤。');
+                }
+            });
+
+            document.getElementById('filter-year').addEventListener('change', async function() {
+                const year = this.value;
+                const month = document.getElementById('filter-month').value;
+                document.getElementById('meeting-history-select').value = '';
+                await loadMeetingHistory(year, month);
+                await loadMeetingTasks();
+            });
+
+            document.getElementById('filter-month').addEventListener('change', async function() {
+                const year = document.getElementById('filter-year').value;
+                const month = this.value;
+                document.getElementById('meeting-history-select').value = '';
+                currentSelectedMeetingTopic = null;
+                currentSelectedMeetingDate = null;
+                await loadMeetingHistory(year, month);
+                await loadMeetingTasks();
+            });
+
+            const expectedCompletionDateInput = document.getElementById('expected-completion-date');
+            if (expectedCompletionDateInput) {
+                expectedCompletionDateInput.addEventListener('change', function() {
+                    const selectedDate = new Date(this.value + 'T00:00:00');
+                    const dayOfWeek = selectedDate.getDay();
+
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        alert('預計完成日期不能是週末，請選擇週一至週五。');
+                        this.value = '';
+                    }
+                });
+            }
+
+            document.getElementById('meeting-history-select').addEventListener('change', async function(event) {
+                const selectedValue = event.target.value;
+                if (selectedValue) {
+                    const [selectedTopic, selectedDate] = selectedValue.split('|');
+                    
+                    // 呼叫新的 API 獲取會議詳細資訊
+                    try {
+                        const response = await fetch(`/api/get_meeting_details_by_topic_date?meeting_topic=${encodeURIComponent(selectedTopic)}&meeting_date=${encodeURIComponent(selectedDate)}`);
+                        const meetingDetails = await response.json();
+
+                        if (response.ok) {
+                            // 填充表單
+                            document.getElementById('meeting-topic').value = meetingDetails.meeting_topic || '';
+                            document.getElementById('meeting-location').value = meetingDetails.location || '';
+                            document.getElementById('meeting-date').value = meetingDetails.meeting_date || '';
+                            document.getElementById('chairman-user-key').value = meetingDetails.chairman_user_key || '';
+                            document.getElementById('recorder-user-key').value = meetingDetails.recorder_user_key || ''; // 填充記錄人員
+                            
+                            // 處理出席人員
+                            const attendeesSelect = document.getElementById('attendees-user-keys');
+                            Array.from(attendeesSelect.options).forEach(option => {
+                                option.selected = meetingDetails.attendees_user_keys && meetingDetails.attendees_user_keys.includes(option.value);
+                            });
+
+                            document.getElementById('discussion-topic').value = meetingDetails.discussion_topic || '';
+                            currentDiscussionItemId = meetingDetails.discussion_item_id; // 儲存討論議題 ID
+
+                            // 更新全域變數，使用從 API 回傳的、格式正確的詳細資料
+                            currentSelectedMeetingTopic = meetingDetails.meeting_topic;
+                            currentSelectedMeetingDate = meetingDetails.meeting_date;
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                        } else {
+                            alert('載入會議詳細資訊失敗: ' + (meetingDetails.error || '未知錯誤'));
+                            // 如果載入失敗，清空表單並重置顯示
+                            document.getElementById('meeting-topic').value = '';
+                            document.getElementById('meeting-date').value = '';
+                            document.getElementById('chairman-user-key').value = '';
+                            document.getElementById('recorder-user-key').value = '';
+                            Array.from(document.getElementById('attendees-user-keys').options).forEach(option => {
+                                option.selected = false;
+                            });
+                            document.getElementById('discussion-topic').value = '';
+                            document.getElementById('task-type').value = 'tracking';
+                            document.getElementById('assigned-to-user-key').value = '';
+                            document.getElementById('controller-user-key').value = '';
+                            document.getElementById('expected-completion-date').value = '';
+                            document.getElementById('task-description').value = '';
+
+                            currentSelectedMeetingTopic = null;
+                            currentSelectedMeetingDate = null;
+                            await loadMeetingTasks();
+                            const year = document.getElementById('filter-year').value;
+                            const month = document.getElementById('filter-month').value;
+                            await loadMeetingHistory(year, month);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching meeting details:', error);
+                        alert('獲取會議詳細資訊時發生網路錯誤。');
+                    }
+
+                } else {
+                    // 如果選擇了「請選擇一個會議」，則清空所有相關內容
+                    document.getElementById('meeting-topic').value = '';
+                    document.getElementById('meeting-location').value = '';
+                    document.getElementById('meeting-date').value = '';
+                    document.getElementById('chairman-user-key').value = '';
+                    document.getElementById('recorder-user-key').value = '';
+                    Array.from(document.getElementById('attendees-user-keys').options).forEach(option => {
+                        option.selected = false;
+                    });
+                    document.getElementById('discussion-topic').value = '';
+                    document.getElementById('task-type').value = 'tracking';
+                    document.getElementById('assigned-to-user-key').value = '';
+                    document.getElementById('controller-user-key').value = '';
+                    document.getElementById('expected-completion-date').value = '';
+                    document.getElementById('task-description').value = '';
+
+                    currentSelectedMeetingTopic = null;
+                    currentSelectedMeetingDate = null;
+                    await loadMeetingTasks();
+                    const year = document.getElementById('filter-year').value;
+                    const month = document.getElementById('filter-month').value;
+                    await loadMeetingHistory(year, month);
+                }
+            });
+
+            const form = document.getElementById('add-meeting-task-form');
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const assignedTo = document.getElementById('assigned-to-user-key').value;
+                const taskType = document.getElementById('task-type').value;
+                const expectedCompletionDate = document.getElementById('expected-completion-date').value;
+                const controller = document.getElementById('controller-user-key').value;
+
+                function showError(message, focusElementId) {
+                    const errorContainer = document.createElement('div');
+                    errorContainer.className = 'error-message';
+                    errorContainer.textContent = message;
+                    const form = document.getElementById('add-meeting-task-form');
+                    if (!form.querySelector('.error-message')) {
+                        form.prepend(errorContainer);
+                    }
+                    setTimeout(() => errorContainer.remove(), 5000);
+                    if (focusElementId) {
+                        document.getElementById(focusElementId).focus();
+                    }
+                }
+
+                if (!document.getElementById('meeting-topic').value) {
+                    showError('請填寫會議主題。', 'meeting-topic');
+                    return;
+                }
+                if (!document.getElementById('meeting-date').value) {
+                    showError('請選擇會議日期。', 'meeting-date');
+                    return;
+                }
+                if (!document.getElementById('discussion-topic').value.trim()) {
+                    showError('請填寫討論議題。', 'discussion-topic');
+                    return;
+                }
+                if (!assignedTo) {
+                    showError('請選擇主辦者。', 'assigned-to-user-key')
+                    return;
+                }
+                if (!assignedTo) {
+                    showError('請選擇管制者。', 'controller-user-key')
+                    return;
+                }
+                if (taskType === 'resolution' && !expectedCompletionDate) {
+                    showError('決議項目必須填寫預計完成日期。', 'expected-completion-date');
+                    return;
+                }
+
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData.entries());
+                data.attendees_user_keys = Array.from(document.getElementById('attendees-user-keys').selectedOptions).map(opt => opt.value);
+                data.recorder_user_key = document.getElementById('recorder-user-key').value;
+                data.discussion_topic = document.getElementById('discussion-topic').value; // 新增討論議題
+                data.location = document.getElementById('meeting-location').value; // 新增會議地點
+
+                const taskTypeDisplay = data.task_type === 'tracking' ? '追蹤項目' : '決議項目';
+                const assignedToName = getUserNameByKey(data.assigned_to_user_key);
+                const controllerName = data.controller_user_key ? getUserNameByKey(data.controller_user_key) : '無';
+
+                const confirmationMessage = `請確認以下任務資訊：\n\n任務類型：${taskTypeDisplay}\n主辦者：${assignedToName}\n管制者：${controllerName}\n\n是否確認新增此任務？`;
+
+                if (!confirm(confirmationMessage)) {
+                    return;
+                }
+
+                // Explicitly handle location to ensure it's sent as null if empty
+                const meetingLocationInput = document.getElementById('meeting-location');
+                if (meetingLocationInput && meetingLocationInput.value.trim() === '') {
+                    data.location = null;
+                } else if (meetingLocationInput) {
+                    data.location = meetingLocationInput.value.trim();
+                } else {
+                    data.location = null; // Fallback if input element is not found
+                }
+
+                try {
+                    const response = await fetch('/api/add_meeting_task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(result.message);
+                        document.getElementById('task-type').value = 'tracking';
+                        document.getElementById('assigned-to-user-key').value = '';
+                        document.getElementById('controller-user-key').value = '';
+                        document.getElementById('expected-completion-date').value = '';
+                        document.getElementById('task-description').value = '';
+                        await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                        await loadMeetingHistory();
+                    } else {
+                        alert('新增失敗: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Error adding meeting task:', error);
+                    alert('新增會議任務時發生錯誤。');
+                }
+            });
+
+            document.getElementById('meeting-records-container').addEventListener('click', async function(event) {
+                const target = event.target;
+                const taskId = target.dataset.taskId;
+
+                if (target.classList.contains('assign-button')) {
+                    const tr = target.closest('tr');
+                    const descriptionCell = tr.querySelector('.task-description-cell');
+                    const taskId = target.dataset.taskId;
+
+                    const textarea = descriptionCell.querySelector('textarea');
+                    if (textarea) {
+                        const newDescription = textarea.value;
+                        const saveSuccess = await saveTaskDescription(taskId, newDescription);
+                        if (!saveSuccess) {
+                            return;
+                        }
+                        descriptionCell.innerHTML = newDescription;
+                        const saveButton = tr.querySelector('.save-button');
+                        if (saveButton) {
+                            saveButton.textContent = '編輯';
+                            saveButton.classList.remove('save-button');
+                            saveButton.classList.add('edit-button');
+                        }
+                    }
+
+                    const dateInput = tr.querySelector('.date-input-table');
+                    const expected_completion_date = dateInput.value;
+                    if (!expected_completion_date) {
+                        alert('請先選擇預計完成日期再指派。');
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`/api/assign_tracking_task_to_todo/${taskId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ expected_completion_date })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                        } else {
+                            alert('指派失敗: ' + result.error);
+                        }
+                    } catch (error) {
+                        console.error('Error assigning task:', error);
+                        alert('指派任務時發生錯誤。');
+                    }
+                } else if (target.classList.contains('agree-button')) {
+                    if (!confirm('確定要同意此決議並最終確定嗎？此操作將鎖定內容，無法再編輯或刪除。')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/meeting_task/${taskId}/agree`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                        } else {
+                            alert('同意失敗: ' + result.error);
+                        }
+                    } catch (error) {
+                        console.error('Error agreeing task:', error);
+                        alert('同意決議時發生錯誤。');
+                    }
+                } else if (target.classList.contains('edit-button')) {
+                    const modal = document.getElementById('edit-task-modal');
+                    const taskId = target.dataset.taskId;
+                    const taskDescription = target.dataset.taskDescription;
+                    const assignedToKey = target.dataset.assignedToKey;
+                    const controllerKey = target.dataset.controllerKey;
+
+                    // Populate modal fields
+                    document.getElementById('edit-task-id').value = taskId;
+                    document.getElementById('edit-task-description').value = taskDescription;
+
+                    // Fetch permissions for the current user and task
+                    const taskDetailsResponse = await fetch(`/api/meeting_task/${taskId}`);
+                    const taskDetails = await taskDetailsResponse.json();
+                    const canEditAssigneeFields = taskDetails.permissions.can_edit_assignee_fields;
+
+                    // Populate and set select options
+                    const assignedToSelect = document.getElementById('edit-assigned-to-user-key');
+                    const controllerSelect = document.getElementById('edit-controller-user-key');
+                    assignedToSelect.innerHTML = '';
+                    controllerSelect.innerHTML = '';
+
+                    allUsersData.forEach(user => {
+                        if (user.level !== 'admin') {
+                            const option = document.createElement('option');
+                            option.value = user.user_key.trim();
+                            option.textContent = `${user.name} (${user.role})`;
+                            assignedToSelect.appendChild(option.cloneNode(true));
+                            controllerSelect.appendChild(option);
+                        }
+                    });
+
+                    const trimmedAssignedToKey = assignedToKey.trim();
+                    const trimmedControllerKey = controllerKey.trim();
+                    
+                    setTimeout(() => {
+                        assignedToSelect.value = trimmedAssignedToKey;
+                        controllerSelect.value = trimmedControllerKey;
+                    }, 0);
+
+                    // Show/hide assignee fields based on permissions
+                    const assignedToGroup = assignedToSelect.closest('.form-group');
+                    const controllerGroup = controllerSelect.closest('.form-group');
+
+                    if (canEditAssigneeFields) {
+                        assignedToGroup.style.display = 'block';
+                        controllerGroup.style.display = 'block';
+                    } else {
+                        assignedToGroup.style.display = 'none';
+                        controllerGroup.style.display = 'none';
+                    }
+                    
+                    modal.style.display = 'block';
+                } else if (target.classList.contains('delete-button')) {
+                    if (!confirm('確定要刪除此任務嗎？此操作無法復原。')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/meeting_task/${taskId}`, {
+                            method: 'DELETE'
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                            await loadMeetingHistory();
+                        } else {
+                            alert('刪除失敗: ' + result.error);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting task:', error);
+                        alert('刪除任務時發生錯誤。');
+                    }
+                }
+            });
+
+            // --- Modal Logic ---
+            const modal = document.getElementById('edit-task-modal');
+            const closeButton = modal.querySelector('.close-button');
+
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+
+            closeButton.onclick = closeModal;
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    closeModal();
+                }
+            }
+
+            document.getElementById('edit-task-form').addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const taskId = document.getElementById('edit-task-id').value;
+                const data = {
+                    task_description: document.getElementById('edit-task-description').value,
+                    assigned_to_user_key: document.getElementById('edit-assigned-to-user-key').value,
+                    controller_user_key: document.getElementById('edit-controller-user-key').value
+                };
+
+                if (!data.task_description.trim()) {
+                    alert('任務事項不可為空。');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/meeting_task/${taskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(result.message || '任務已成功更新');
+                        closeModal();
+                        await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                    } else {
+                        alert('更新失敗: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Error updating task via modal:', error);
+                    alert('更新任務時發生錯誤。');
+                }
+            });
+
+            document.getElementById('update-discussion-topic-button').addEventListener('click', async function() {
+                const newTopic = document.getElementById('discussion-topic').value;
+                const currentMeetingTopic = document.getElementById('meeting-topic').value;
+                const currentMeetingDate = document.getElementById('meeting-date').value;
+
+                if (!newTopic.trim()) {
+                    alert('討論議題內容不可為空。');
+                    return;
+                }
+
+                const chairmanUserKey = document.getElementById('chairman-user-key').value;
+                const recorderUserKey = document.getElementById('recorder-user-key').value;
+                const attendeesUserKeys = Array.from(document.getElementById('attendees-user-keys').selectedOptions).map(opt => opt.value);
+                const location = document.getElementById('meeting-location').value;
+
+                // Case 1: No historical meeting is selected (currentSelectedMeetingTopic is null)
+                // This means the user is trying to create a brand new meeting/discussion.
+                if (currentSelectedMeetingTopic === null) {
+                    try {
+                        const response = await fetch('/api/create_new_meeting_discussion', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                meeting_topic: currentMeetingTopic,
+                                meeting_date: currentMeetingDate,
+                                chairman_user_key: chairmanUserKey,
+                                recorder_user_key: recorderUserKey,
+                                attendees_user_keys: attendeesUserKeys,
+                                discussion_topic: newTopic,
+                                location: location
+                            })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            // 成功創建後，更新當前選中的會議資訊並重新載入任務和歷史
+                            currentSelectedMeetingTopic = currentMeetingTopic;
+                            currentSelectedMeetingDate = currentMeetingDate;
+                            currentDiscussionItemId = result.discussion_item_id; // 更新討論議題 ID
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                            await loadMeetingHistory();
+                        } else {
+                            alert('創建新會議和討論議題失敗: ' + result.error);
+                        }
+                    } catch (error) {
+                        console.error('創建新會議和討論議題時發生錯誤:', error);
+                        alert('創建新會議和討論議題時發生網路錯誤。');
+                    }
+                    return;
+                } 
+                // Case 2: A historical meeting is selected, and its topic or date has been modified
+                else if (currentMeetingTopic !== currentSelectedMeetingTopic || (currentMeetingDate && currentSelectedMeetingDate && currentMeetingDate.split('T')[0] !== currentSelectedMeetingDate.split('T')[0])) {
+                    const confirmation = confirm('會議主題或日期已修改。這將創建一個新的會議和討論議題。是否繼續？');
+                    if (!confirmation) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/api/create_new_meeting_discussion', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                meeting_topic: currentMeetingTopic,
+                                meeting_date: currentMeetingDate,
+                                chairman_user_key: chairmanUserKey,
+                                recorder_user_key: recorderUserKey,
+                                attendees_user_keys: attendeesUserKeys,
+                                discussion_topic: newTopic,
+                                location: location
+                            })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            // 成功創建後，更新當前選中的會議資訊並重新載入任務和歷史
+                            currentSelectedMeetingTopic = currentMeetingTopic;
+                            currentSelectedMeetingDate = currentMeetingDate;
+                            currentDiscussionItemId = result.discussion_item_id; // 更新討論議題 ID
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                            await loadMeetingHistory();
+                        } else {
+                            alert('創建新會議和討論議題失敗: ' + result.error);
+                        }
+                    } catch (error) {
+                        console.error('創建新會議和討論議題時發生錯誤:', error);
+                        alert('創建新會議和討論議題時發生網路錯誤。');
+                    }
+                    return;
+                } 
+                // Case 3: A historical meeting is selected, and only the discussion topic (or other fields not topic/date) is being updated
+                else if (currentDiscussionItemId) {
+                    try {
+                        const response = await fetch(`/api/discussion_item/${currentDiscussionItemId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                topic: newTopic,
+                                recorder_user_key: recorderUserKey,
+                                location: location,
+                                meeting_date: currentMeetingDate // Pass the current form date for consistency
+                            })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert(result.message);
+                            await loadMeetingTasks(currentSelectedMeetingTopic, currentSelectedMeetingDate);
+                        } else {
+                            alert('更新討論議題失敗: ' + result.error);
+                        }
+                    } catch (error) {
+                        console.error('Error updating discussion item:', error);
+                        alert('更新討論議題時發生錯誤。');
+                    }
+                } else {
+                    alert('無法更新討論議題，請先選擇一個歷史會議。');
+                }
+            });
+        });
+    </script>
+        <script src="{{ url_for('static', filename='js/flatpickr/flatpickr.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/flatpickr/zh-tw.js') }}"></script>
+    <script>
+</body>
+</html>
