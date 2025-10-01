@@ -54,7 +54,7 @@ def check_due_today_tasks(app, db, User, Todo):
                     body_parts.append("")
                 body_parts.append("請登入系統查看並完成您的任務：")
                 body_parts.append("http://192.168.6.119:5001") # Assuming this is the correct URL
-                body = "\n".join(body_parts)
+                body = "<br>".join(body_parts)
 
                 try:
                     send_mail(subject, body, user.email)
@@ -97,7 +97,7 @@ def check_overdue_tasks(app, db, User, Todo):
                     body_parts.append("")
                 body_parts.append("請登入系統查看並盡快處理您的逾期任務：")
                 body_parts.append("http://192.168.6.119:5001") # Assuming this is the correct URL
-                body = "\n".join(body_parts)
+                body = "<br>".join(body_parts)
 
                 try:
                     send_mail(subject, body, user.email)
@@ -124,15 +124,14 @@ def check_unassigned_meeting_tasks(app, db, User, MeetingTask, Meeting):
         ).all()
 
         for task in unassigned_tasks:
-            chairman = db.session.get(User, task.meeting.chairman_user_id)
-            assigned_by_user = db.session.get(User, task.assigned_by_user_id)
+            assigned_to_user = db.session.get(User, task.assigned_to_user_id)
             controller_user = db.session.get(User, task.controller_user_id) if task.controller_user_id else None
+            chairman = db.session.get(User, task.meeting.chairman_user_id) # Still needed for email body context
+            assigned_by_user = db.session.get(User, task.assigned_by_user_id) # Still needed for email body context
 
             recipients = set()
-            if chairman and chairman.notification_enabled:
-                recipients.add(chairman.email)
-            if assigned_by_user and assigned_by_user.notification_enabled:
-                recipients.add(assigned_by_user.email)
+            if assigned_to_user and assigned_to_user.notification_enabled:
+                recipients.add(assigned_to_user.email)
 
             cc_recipients = set()
             if controller_user and controller_user.notification_enabled:
@@ -148,7 +147,7 @@ def check_unassigned_meeting_tasks(app, db, User, MeetingTask, Meeting):
                 body_parts.append("")
                 body_parts.append("請盡快登入系統指派此任務：")
                 body_parts.append("http://192.168.6.119:5001/meeting_tasks") # Link directly to meeting tasks page
-                body = "\n".join(body_parts)
+                body = "<br>".join(body_parts)
 
                 try:
                     send_mail(subject, body, list(recipients), cc_recipients=list(cc_recipients))
@@ -182,8 +181,6 @@ def check_unagreed_resolution_items(app, db, User, MeetingTask, Meeting):
             recipients = set()
             if assigned_to_user and assigned_to_user.notification_enabled:
                 recipients.add(assigned_to_user.email)
-            if chairman and chairman.notification_enabled:
-                recipients.add(chairman.email)
 
             cc_recipients = set()
             if controller_user and controller_user.notification_enabled:
@@ -198,7 +195,7 @@ def check_unagreed_resolution_items(app, db, User, MeetingTask, Meeting):
                 body_parts.append("")
                 body_parts.append("請盡快登入系統處理此決議：")
                 body_parts.append("http://192.168.6.119:5001/meeting_tasks") # Link directly to meeting tasks page
-                body = "\n".join(body_parts)
+                body = "<br>".join(body_parts)
 
                 try:
                     send_mail(subject, body, list(recipients), cc_recipients=list(cc_recipients))
@@ -247,12 +244,15 @@ def transfer_and_archive_todos(app, db, Todo, ArchivedTodo):
         db.session.commit()
         logging.info(f"Transferred {len(todos_to_transfer)} future todos to current based on due_date.")
 
-        # 2. 歸檔或刪除已完成的本週進度
-        completed_current_todos = Todo.query.filter_by(todo_type=TodoType.CURRENT.value, status=TodoStatus.COMPLETED.value).all()
+        # 2. 歸檔或刪除所有已完成的任務 (本週與未來)
+        completed_todos = Todo.query.filter(
+            Todo.status == TodoStatus.COMPLETED.value,
+            Todo.todo_type.in_([TodoType.CURRENT.value, TodoType.NEXT.value])
+        ).all()
         archived_count = 0
         deleted_count = 0
 
-        for todo in completed_current_todos:
+        for todo in completed_todos:
             # 如果是從會議任務來的，直接刪除，因為資訊已回填
             if todo.meeting_task_id:
                 db.session.delete(todo)

@@ -1059,12 +1059,12 @@ def add_todo():
         if target_user.id != current_user.id and target_user.notification_enabled:
             subject = f"[新任務指派] {todo.title}"
             body = (
-                f"您好 {target_user.name}，\n\n"
-                f"您被 {current_user.name} 指派了一項新任務。\n\n"
-                f"任務標題: {todo.title}\n"
-                f"任務描述:\n{todo.description}\n\n"
-                f"預計完成日期: {todo.due_date.strftime('%Y-%m-%d')}\n\n"
-                f"請登入系統查看：\nhttp://192.168.6.119:5001"
+                f"您好 {target_user.name}，<br><br>"
+                f"您被 {current_user.name} 指派了一項新任務。<br><br>"
+                f"<b>任務標題:</b> {todo.title}<br>"
+                f"<b>任務描述:</b><br>{todo.description.replace('\n', '<br>')}<br><br>"
+                f"<b>預計完成日期:</b> {todo.due_date.strftime('%Y-%m-%d')}<br><br>"
+                f"請登入系統查看：<br><a href='http://192.168.6.119:5001'>http://192.168.6.119:5001</a>"
             )
             send_mail(subject, body, target_user.email)
             logging.info(f"Sent 'new task' notification for task {todo.id} to {target_user.email}")
@@ -1138,12 +1138,12 @@ def batch_add_todo():
             try:
                 subject = f"[新任務指派] {data['title']}"
                 body = (
-                    f"您好 {target_user.name}，\n\n"
-                    f"您被 {current_user.name} 指派了一項新任務。\n\n"
-                    f"任務標題: {data['title']}\n"
-                    f"任務描述:\n{data['description']}\n\n"
-                    f"預計完成日期: {due_date.strftime('%Y-%m-%d')}\n\n"
-                    f"請登入系統查看：\nhttp://192.168.6.119:5001"
+                    f"您好 {target_user.name}，<br><br>"
+                    f"您被 {current_user.name} 指派了一項新任務。<br><br>"
+                    f"<b>任務標題:</b> {data['title']}<br>"
+                    f"<b>任務描述:</b><br>{data['description'].replace('\n', '<br>')}<br><br>"
+                    f"<b>預計完成日期:</b> {due_date.strftime('%Y-%m-%d')}<br><br>"
+                    f"請登入系統查看：<br><a href='http://192.168.6.119:5001'>http://192.168.6.119:5001</a>"
                 )
                 send_mail(subject, body, target_user.email)
                 logging.info(f"Sent 'new task' notification for batch-added task to {target_user.email}")
@@ -1694,12 +1694,12 @@ def update_todo_status(todo_id):
             if assigner and assigner.id != todo.user_id and assigner.notification_enabled:
                 subject = f"[任務完成] {todo.title}"
                 body = (
-                    f"您好 {assigner.name}，\n\n"
-                    f"由您指派給 {todo.user.name} 的任務已完成。\n\n"
-                    f"任務標題: {todo.title}\n"
-                    f"任務描述:\n{todo.description}\n\n"
-                    f"完成日期: {datetime.now(timezone('Asia/Taipei')).strftime('%Y-%m-%d')}\n\n"
-                    f"請登入系統查看：\nhttp://192.168.6.119:5001"
+                    f"您好 {assigner.name}，<br><br>"
+                    f"由您指派給 {todo.user.name} 的任務已完成。<br><br>"
+                    f"<b>任務標題:</b> {todo.title}<br>"
+                    f"<b>任務描述:</b><br>{todo.description.replace('\n', '<br>')}<br><br>"
+                    f"<b>完成日期:</b> {datetime.now(timezone('Asia/Taipei')).strftime('%Y-%m-%d')}<br><br>"
+                    f"請登入系統查看：<br><a href='http://192.168.6.119:5001'>http://192.168.6.119:5001</a>"
                 )
                 send_mail(subject, body, assigner.email)
                 logging.info(f"Sent 'task completed' notification for task {todo.id} to assigner {assigner.email}")
@@ -1985,16 +1985,16 @@ def create_new_meeting_discussion():
             
             for recipient_email in all_recipients_emails:
                 body = (
-                    f"您好，\n\n"
-                    f"有一場新的會議已安排，詳細資訊如下：\n\n"
-                    f"會議主題: {meeting_topic}\n"
-                    f"會議日期: {meeting_date_taipei}\n"
-                    f"會議地點: {new_meeting.location or '未指定'}\n"
-                    f"主席: {chairman.name}\n"
-                    f"紀錄人員: {recorder.name if recorder else '未指定'}\n"
-                    f"討論議題: {discussion_topic}\n"
-                    f"與會人員: {', '.join(attendee_names_for_body) if attendee_names_for_body else '無'}\n\n"
-                    f"請登入系統查看：\nhttp://192.168.6.119:5001"
+                    f"您好，<br><br>"
+                    f"有一場新的會議已安排，詳細資訊如下：<br><br>"
+                    f"<b>會議主題:</b> {meeting_topic}<br>"
+                    f"<b>會議日期:</b> {meeting_date_taipei}<br>"
+                    f"<b>會議地點:</b> {new_meeting.location or '未指定'}<br>"
+                    f"<b>主席:</b> {chairman.name}<br>"
+                    f"<b>紀錄人員:</b> {recorder.name if recorder else '未指定'}<br>"
+                    f"<b>討論議題:</b> {discussion_topic}<br>"
+                    f"<b>與會人員:</b> {', '.join(attendee_names_for_body) if attendee_names_for_body else '無'}<br><br>"
+                    f"請登入系統查看：<br><a href='http://192.168.6.119:5001'>http://192.168.6.119:5001</a>"
                 )
                 
                 try:
@@ -2419,13 +2419,12 @@ def assign_tracking_task_to_todo(meeting_task_id):
         if assigned_to_user and assigned_to_user.email and assigned_to_user.notification_enabled:
             subject = f"會議任務指派已確認預計完成日期：{new_todo.title}"
             body = (
-                f"您好 {assigned_to_user.name}，\n\n"
-                f"您有一個新的會議任務已指派給您：\n\n"
-                f"任務標題： {new_todo.title}\n"
-                f"任務描述： {new_todo.description}\n"
-                f"預計完成日期： {new_todo.due_date.astimezone(timezone('Asia/Taipei')).strftime('%Y-%m-%d')}\n"
-                f"指派人： {assigner_user.name}\n\n"
-                f"請登入系統查看：\nhttp://192.168.6.119:5001"
+                f"您好 {assignee.name}，<br><br>"
+                f"您有一項來自 <b>'{meeting_task.meeting.subject}'</b> 會議的新任務。<br><br>"
+                f"<b>任務內容:</b> {meeting_task.task_description}<br>"
+                f"<b>指派人:</b> {assignor_name}<br>"
+                f"<b>預計完成日期:</b> {due_date_str}<br><br>"
+                f"請登入系統查看詳情：<br><a href='http://192.168.6.119:5001'>http://192.168.6.119:5001</a>"
             )
             
             mail_cc = ""
