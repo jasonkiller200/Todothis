@@ -19,6 +19,8 @@
                     <a href="{{ url_for('user_settings') }}">⚙️ 個人設定</a>
                     {% if current_user.level == 'admin' %}
                         <a href="{{ url_for('admin_users') }}">⚙️ 管理後台</a>
+                    {% endif %}
+                    {% if current_user.level in ['admin', 'executive-manager', 'plant-manager', 'manager', 'assistant-manager', 'section-chief', 'deputy-section-chief'] %}
                         <a href="{{ url_for('reports') }}">📊 報告中心</a>
                     {% endif %}
                     <a href="{{ url_for('meeting_tasks') }}">📝 會議任務指派</a>

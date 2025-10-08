@@ -4,6 +4,7 @@ from pytz import timezone, utc
 import time
 import atexit
 import json
+from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
 from mail_service import send_mail
 from config import TodoStatus, TodoType, MeetingTaskStatus, MeetingTaskType
@@ -95,6 +96,13 @@ def check_overdue_tasks(app, db, User, Todo):
                     body_parts.append(f"    描述: {task.description}")
                     body_parts.append(f"    預計完成日期: {due_date_str}")
                     body_parts.append("")
+                
+                # 新增：提醒使用者可以重設預計完成日期
+                body_parts.append("<b>💡 小提示：</b>")
+                body_parts.append("如任務無法在原定期限完成，您可以在系統中將任務狀態設為「未完成」，")
+                body_parts.append("填寫未完成原因後，同時重新設定新的預計完成日期。")
+                body_parts.append("")
+                
                 body_parts.append("請登入系統查看並盡快處理您的逾期任務：")
                 body_parts.append("http://192.168.6.119:5001") # Assuming this is the correct URL
                 body = "<br>".join(body_parts)
@@ -150,8 +158,11 @@ def check_unassigned_meeting_tasks(app, db, User, MeetingTask, Meeting):
                 body = "<br>".join(body_parts)
 
                 try:
-                    send_mail(subject, body, list(recipients), cc_recipients=list(cc_recipients))
-                    logging.info(f"Sent 'unassigned meeting task' notification for task {task.id} to {recipients}.")
+                    recipients_str = ";".join(list(recipients))
+                    cc_recipients_str = ";".join(list(cc_recipients))
+                    send_mail(subject, body, recipients_str, mail_cc=cc_recipients_str)
+                    logging.info(f"Sent 'unassigned meeting task' notification for task {task.id} to {recipients_str}.")
+                    sleep(5) # Add a 5-second delay after sending each email
                 except Exception as e:
                     logging.error(f"Failed to send 'unassigned meeting task' notification for task {task.id}: {e}")
 
@@ -198,8 +209,11 @@ def check_unagreed_resolution_items(app, db, User, MeetingTask, Meeting):
                 body = "<br>".join(body_parts)
 
                 try:
-                    send_mail(subject, body, list(recipients), cc_recipients=list(cc_recipients))
-                    logging.info(f"Sent 'unagreed resolution item' notification for item {item.id} to {recipients}.")
+                    recipients_str = ";".join(list(recipients))
+                    cc_recipients_str = ";".join(list(cc_recipients))
+                    send_mail(subject, body, recipients_str, mail_cc=cc_recipients_str)
+                    logging.info(f"Sent 'unagreed resolution item' notification for item {item.id} to {recipients_str}.")
+                    sleep(5) # Add a 5-second delay after sending each email
                 except Exception as e:
                     logging.error(f"Failed to send 'unagreed resolution item' notification for item {item.id}: {e}")
 
@@ -470,7 +484,7 @@ def init_app_scheduler(app, db, User, Todo, ArchivedTodo, MeetingTask, Meeting, 
     scheduler.add_job(check_due_today_tasks, 'cron', day_of_week='mon-fri', hour=7, minute=30, timezone=taiwan_tz, misfire_grace_time=60, args=[app, db, User, Todo])
     scheduler.add_job(check_overdue_tasks, 'cron', day_of_week='mon-fri', hour=7, minute=25, timezone=taiwan_tz, misfire_grace_time=60, args=[app, db, User, Todo])
     scheduler.add_job(check_unassigned_meeting_tasks, 'cron', day_of_week='mon-fri', hour=7, minute=35, timezone=taiwan_tz, misfire_grace_time=60, args=[app, db, User, MeetingTask, Meeting])
-    scheduler.add_job(check_unagreed_resolution_items, 'cron', day_of_week='mon-fri', hour=7, minute=40, timezone=taiwan_tz, misfire_grace_time=60, args=[app, db, User, MeetingTask, Meeting])
+    scheduler.add_job(check_unagreed_resolution_items, 'cron', day_of_week='mon-fri', hour=7, minute=37, timezone=taiwan_tz, misfire_grace_time=60, args=[app, db, User, MeetingTask, Meeting])
     
     # Add the new ticker job for weekly reports
     scheduler.add_job(check_and_trigger_reports, 'interval', minutes=5, timezone=taiwan_tz, misfire_grace_time=60, args=[app, db, User, Todo, ReportSchedule])

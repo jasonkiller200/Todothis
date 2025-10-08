@@ -150,8 +150,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <option value="uncompleted">未完成</option>
                         </select>
                         <div id="uncompleted-reason-container-${todo.id}" style="display:none; margin-top: 5px;">
+                            <label for="uncompleted-reason-${todo.id}" style="display:block; margin-bottom:4px; font-weight:600;">未完成原因：</label>
                             <textarea id="uncompleted-reason-${todo.id}" class="uncompleted-reason-input" placeholder="請輸入未完成原因"></textarea>
-                            <button type="button" class="btn confirm-uncompleted-btn" data-todo-id="${todo.id}">確認原因</button>
+                            <label for="new-due-date-${todo.id}" style="display:block; margin-top:8px; margin-bottom:4px; font-weight:600;">新的預計完成日期：</label>
+                            <input type="date" id="new-due-date-${todo.id}" class="new-due-date-input" />
+                            <button type="button" class="btn confirm-uncompleted-btn" data-todo-id="${todo.id}">確認</button>
                         </div>` : 
                         `<span class="status-badge status-${todo.status}">${getStatusText(todo.status)}</span>`
                     }
@@ -179,6 +182,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 } else if (entry.event_type === 'status_changed') {
                                     const actorDisplayName = `由 ${getActorName(entry.actor)}`;
                                     eventText = `${actorDisplayName} 狀態從 ${getStatusText(entry.details.old_status)} 變更為 ${getStatusText(entry.details.new_status)}`;
+                                    if (entry.details.reason) {
+                                        eventText += ` (原因: ${escapeHTML(entry.details.reason)})`;
+                                    }
+                                } else if (entry.event_type === 'due_date_changed') {
+                                    const actorDisplayName = `由 ${getActorName(entry.actor)}`;
+                                    eventText = `${actorDisplayName} 預計完成日期從 ${escapeHTML(entry.details.old_due_date)} 變更為 ${escapeHTML(entry.details.new_due_date)}`;
                                     if (entry.details.reason) {
                                         eventText += ` (原因: ${escapeHTML(entry.details.reason)})`;
                                     }
@@ -356,6 +365,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupDynamicEventListeners() {
+        // 設置日期驗證功能 - 只允許選擇週一到週五
+        function setupDateInputValidation(dateInput) {
+            if (!dateInput) return;
+            
+            dateInput.addEventListener('change', function() {
+                const selectedDate = new Date(this.value + 'T00:00:00');
+                const dayOfWeek = selectedDate.getDay();
+                
+                if (dayOfWeek === 0 || dayOfWeek === 6) { // 0 = Sunday, 6 = Saturday
+                    alert('預計完成日期不能是週末，請選擇週一至週五。');
+                    this.value = '';
+                }
+            });
+        }
+        
         document.body.addEventListener('change', function(e) {
             if (e.target && e.target.classList.contains('status-select')) {
                 const todoId = e.target.dataset.todoId;
@@ -364,10 +388,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (newStatus === 'uncompleted') {
                     reasonContainer.style.display = 'block';
+                    // 為新顯示的日期輸入框添加驗證
+                    const dateInput = document.getElementById(`new-due-date-${todoId}`);
+                    setupDateInputValidation(dateInput);
                 } else {
                     reasonContainer.style.display = 'none';
                     updateTodoStatus(todoId, newStatus);
                 }
+            }
+            
+            // 為新的日期輸入框添加驗證（當它們被動態創建時）
+            if (e.target && e.target.classList.contains('new-due-date-input')) {
+                setupDateInputValidation(e.target);
             }
         });
 
@@ -376,19 +408,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 const todoId = e.target.dataset.todoId;
                 const reasonInput = document.getElementById(`uncompleted-reason-${todoId}`);
                 const reason = reasonInput.value.trim();
+                
+                // 新增：獲取新的預計完成日期（僅日期，不含時間）
+                const newDueDateInput = document.getElementById(`new-due-date-${todoId}`);
+                const newDueDate = newDueDateInput.value; // 格式為 YYYY-MM-DD
+                
                 if (!reason) {
                     alert('請輸入未完成原因');
                     return;
                 }
-                updateTodoStatus(todoId, 'uncompleted', reason);
+                
+                // 新增：驗證日期必填
+                if (!newDueDate) {
+                    alert('請選擇新的預計完成日期');
+                    return;
+                }
+                
+                updateTodoStatus(todoId, 'uncompleted', reason, newDueDate);
             }
         });
     }
     
-    function updateTodoStatus(todoId, status, reason = null) {
+    function updateTodoStatus(todoId, status, reason = null, newDueDate = null) {
         const body = { status: status };
         if (reason) {
             body.uncompleted_reason = reason;
+        }
+        // 新增：添加新的預計完成日期
+        if (newDueDate) {
+            // 將日期格式 YYYY-MM-DD 轉換為完整的日期時間（設定為當天 00:00，與指派任務時一致）
+            const dateObj = new Date(newDueDate + 'T00:00:00');
+            body.new_due_date = dateObj.toISOString();
         }
 
         fetch(`/api/todo/${todoId}/status`, {

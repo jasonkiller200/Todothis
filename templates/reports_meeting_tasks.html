@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Task 報告</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <style>
+        :root {
+            --color-primary: #667eea;
+            --color-secondary: #764ba2;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-info: #3b82f6;
+            --color-background: #f0f2f5;
+            --color-white: #fff;
+            --color-text: #333;
+            --color-text-light: #666;
+            --color-border: #e5e7eb;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--color-text);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--color-white);
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            padding: 30px;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 頂部導航 */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid var(--color-background);
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .nav-tab {
+            padding: 10px 20px;
+            background: var(--color-background);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: var(--color-text);
+        }
+        
+        .nav-tab:hover {
+            background: var(--color-primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+        }
+        
+        .btn-home {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 頁面標題 */
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .page-header p {
+            color: var(--color-text-light);
+            font-size: 1.1em;
+        }
+        
+        /* 統計卡片 */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--color-background) 0%, #fff 100%);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+            border-left: 4px solid var(--color-primary);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .stat-card.success { border-left-color: var(--color-success); }
+        .stat-card.warning { border-left-color: var(--color-warning); }
+        .stat-card.danger { border-left-color: var(--color-danger); }
+        .stat-card.info { border-left-color: var(--color-info); }
+        
+        .stat-card .icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card.success .value { color: var(--color-success); }
+        .stat-card.warning .value { color: var(--color-warning); }
+        .stat-card.danger .value { color: var(--color-danger); }
+        .stat-card.info .value { color: var(--color-info); }
+        
+        .stat-card .label {
+            color: var(--color-text-light);
+            font-size: 0.95em;
+        }
+        
+        /* 功能分頁 */
+        .function-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: var(--color-background);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+            color: var(--color-text);
+        }
+        
+        .tab:hover {
+            background: var(--color-primary);
+            color: white;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* 內容區域 */
+        .content-area {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 400px;
+        }
+        
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .tab-pane.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 載入動畫 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--color-text-light);
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        /* 空數據 */
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--color-text-light);
+        }
+        
+        .no-data .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        /* 篩選器 */
+        .filters {
+            background: var(--color-background);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-size: 0.9em;
+            color: var(--color-text-light);
+            font-weight: 500;
+            min-height: 1.2em;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            min-width: 150px;
+            height: 38px;
+        }
+        
+        .btn-filter {
+            padding: 8px 20px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            height: 38px;
+        }
+        
+        .btn-filter:hover {
+            background: var(--color-secondary);
+            transform: translateY(-2px);
+        }
+        
+        /* 表格樣式 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table thead {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--color-border);
+        }
+        
+        .data-table tbody tr:hover {
+            background: var(--color-background);
+        }
+        
+        .data-table .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-in-progress { background: #fff3cd; color: #856404; }
+        .status-unassigned { background: #e2e3e5; color: #383d41; }
+        .status-overdue { background: #f8d7da; color: #721c24; }
+        
+        /* 排行榜樣式 */
+        .ranking-list {
+            list-style: none;
+        }
+        
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: var(--color-background);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .ranking-item:hover {
+            transform: translateX(5px);
+            box-shadow: var(--shadow);
+        }
+        
+        .ranking-medal {
+            font-size: 2em;
+            margin-right: 15px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .ranking-info {
+            flex: 1;
+        }
+        
+        .ranking-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .ranking-details {
+            font-size: 0.9em;
+            color: var(--color-text-light);
+        }
+        
+        .ranking-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 頂部導航 -->
+        <div class="top-nav">
+            <div class="nav-tabs">
+                <a href="{{ url_for('reports_todo') }}" class="nav-tab">📝 Todo 任務</a>
+                <a href="{{ url_for('reports_meeting_tasks') }}" class="nav-tab active">📋 Meeting Task</a>
+            </div>
+            <a href="{{ url_for('reports') }}" class="btn-home">← 返回報告中心</a>
+        </div>
+
+        <!-- 頁面標題 -->
+        <div class="page-header">
+            <h1>📋 Meeting Task 報告</h1>
+            <p>會議任務統計分析與管理</p>
+        </div>
+
+        <!-- 統計卡片 -->
+        <div class="stats-cards" id="statsCards">
+            <div class="stat-card info">
+                <div class="icon">📊</div>
+                <div class="value" id="statTotal">-</div>
+                <div class="label">總任務數</div>
+            </div>
+            <div class="stat-card success">
+                <div class="icon">✅</div>
+                <div class="value" id="statCompleted">-</div>
+                <div class="label">已完成追蹤</div>
+            </div>
+            <div class="stat-card success" style="border-left: 4px solid #10b981;">
+                <div class="icon">✅</div>
+                <div class="value" id="statAgreed">-</div>
+                <div class="label">已同意決議</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="icon">⏳</div>
+                <div class="value" id="statInProgress">-</div>
+                <div class="label">進行中追蹤</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="icon">🔴</div>
+                <div class="value" id="statOverdue">-</div>
+                <div class="label">逾期任務</div>
+            </div>
+        </div>
+
+        <!-- 篩選器 -->
+        <div class="filters" id="filters" style="display:none;">
+            <div class="filter-group">
+                <label>時間範圍</label>
+                <select id="filterPeriod">
+                    <option value="week">本週</option>
+                    <option value="month" selected>本月</option>
+                    <option value="last_month">上個月</option>
+                    <option value="quarter">本季</option>
+                    <option value="year">本年</option>
+                    <option value="all">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>任務類型</label>
+                <select id="filterTaskType">
+                    <option value="">全部</option>
+                    <option value="tracking">追蹤項目</option>
+                    <option value="resolution">決議項目</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>負責人</label>
+                <select id="filterUser">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <button class="btn-filter" onclick="applyFilters()">🔍 套用篩選</button>
+        </div>
+
+        <!-- 功能分頁 -->
+        <div class="function-tabs">
+            <button class="tab active" data-tab="overview" onclick="switchTab('overview')">📊 概覽統計</button>
+            <button class="tab" data-tab="list" onclick="switchTab('list')">📋 已完成任務</button>
+            <button class="tab" data-tab="in-progress" onclick="switchTab('in-progress')">⏳ 進行中追蹤</button>
+            <button class="tab" data-tab="overdue" onclick="switchTab('overdue')">🔴 逾期任務</button>
+            <button class="tab" data-tab="pending-resolutions" onclick="switchTab('pending-resolutions')">✅ 待同意決議</button>
+            <button class="tab" data-tab="unassigned-tracking" onclick="switchTab('unassigned-tracking')">⏸️ 待指派追蹤</button>
+            <button class="tab" data-tab="ranking" onclick="switchTab('ranking')">🏆 個人排行</button>
+        </div>
+
+        <!-- 內容區域 -->
+        <div class="content-area">
+            <!-- 概覽統計分頁 -->
+            <div id="tab-overview" class="tab-pane active">
+                <h2>📊 任務概覽統計</h2>
+                <div class="loading">載入中...</div>
+            </div>
+
+            <!-- 已完成任務列表分頁 -->
+            <div id="tab-list" class="tab-pane">
+                <h2>📋 已完成任務列表</h2>
+                <div class="loading">載入中...</div>
+            </div>
+            
+            <!-- 進行中任務分頁 -->
+            <div id="tab-in-progress" class="tab-pane">
+                <h2>⏳ 進行中任務</h2>
+                <div class="loading">載入中...</div>
+            </div>
+
+            <!-- 逾期任務分頁 -->
+            <div id="tab-overdue" class="tab-pane">
+                <h2>🔴 逾期任務</h2>
+                <div class="loading">載入中...</div>
+            </div>
+            
+            <!-- 待同意決議分頁 -->
+            <div id="tab-pending-resolutions" class="tab-pane">
+                <h2>✅ 待同意決議項目</h2>
+                <div class="loading">載入中...</div>
+            </div>
+            
+            <!-- 待指派追蹤分頁 -->
+            <div id="tab-unassigned-tracking" class="tab-pane">
+                <h2>⏸️ 待指派追蹤項目</h2>
+                <div class="loading">載入中...</div>
+            </div>
+            
+            <!-- 個人排行分頁 -->
+            <div id="tab-ranking" class="tab-pane">
+                <h2>🏆 個人排行榜</h2>
+                <div class="loading">載入中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let currentTab = 'overview';
+        let allUsers = [];
+        let currentFilters = {
+            period: 'month',
+            taskType: '',
+            status: '',
+            user: ''
+        };
+
+        // 頁面載入時初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUsers();
+            await loadUserList();  // 載入用戶列表
+            loadOverviewData();
+        });
+
+        // 載入使用者列表
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/all_users');
+                allUsers = await response.json();
+                
+                const filterUser = document.getElementById('filterUser');
+                filterUser.innerHTML = '<option value="">全部</option>';
+                allUsers.forEach(user => {
+                    if (user.level !== 'admin') {
+                        const option = document.createElement('option');
+                        option.value = user.user_id;
+                        option.textContent = `${user.name} (${user.role})`;
+                        filterUser.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // 切換分頁
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // 更新分頁按鈕狀態
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // 更新內容區域
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // 顯示/隱藏篩選器
+            const filtersDiv = document.getElementById('filters');
+            if (tabName === 'overview') {
+                filtersDiv.style.display = 'none';
+                loadOverviewData();
+            } else if (tabName === 'list') {
+                filtersDiv.style.display = 'flex';
+                loadListData();
+            } else if (tabName === 'in-progress') {
+                filtersDiv.style.display = 'none';
+                loadInProgressData();
+            } else if (tabName === 'overdue') {
+                filtersDiv.style.display = 'none';
+                loadOverdueData();
+            } else if (tabName === 'pending-resolutions') {
+                filtersDiv.style.display = 'none';
+                loadPendingResolutionsData();
+            } else if (tabName === 'unassigned-tracking') {
+                filtersDiv.style.display = 'none';
+                loadUnassignedTrackingData();
+            } else if (tabName === 'ranking') {
+                filtersDiv.style.display = 'none';
+                loadRankingData();
+            }
+        }
+
+        // 套用篩選
+        function applyFilters() {
+            currentFilters.period = document.getElementById('filterPeriod').value;
+            currentFilters.taskType = document.getElementById('filterTaskType').value;
+            currentFilters.user = document.getElementById('filterUser').value;
+            
+            if (currentTab === 'list') {
+                loadListData();
+            }
+        }
+        
+        // 載入用戶列表（從實際數據中獲取）
+        async function loadUserList() {
+            try {
+                // 獲取所有任務來提取用戶列表
+                const response = await fetch('/api/reports/meeting-tasks/list?period=all');
+                const data = await response.json();
+                
+                if (data.tasks) {
+                    // 提取唯一的負責人
+                    const users = new Map();
+                    data.tasks.forEach(task => {
+                        if (task.assigned_to_name) {
+                            users.set(task.assigned_to_name, true);
+                        }
+                    });
+                    
+                    // 填充下拉選單
+                    const userSelect = document.getElementById('filterUser');
+                    userSelect.innerHTML = '<option value="">全部</option>';
+                    Array.from(users.keys()).sort().forEach(userName => {
+                        userSelect.innerHTML += `<option value="${userName}">${userName}</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading user list:', error);
+            }
+        }
+
+        // 載入概覽數據
+        async function loadOverviewData() {
+            try {
+                const response = await fetch('/api/reports/meeting-tasks/overview');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                // 更新統計卡片
+                document.getElementById('statTotal').textContent = data.current.total || 0;
+                document.getElementById('statCompleted').textContent = data.current.completed || 0;
+                document.getElementById('statAgreed').textContent = data.current.agreed || 0;  // 新增
+                document.getElementById('statInProgress').textContent = data.current.in_progress || 0;
+                document.getElementById('statOverdue').textContent = data.current.overdue || 0;
+                
+                // 顯示詳細統計
+                const overviewTab = document.getElementById('tab-overview');
+                overviewTab.innerHTML = `
+                    <h2>📊 任務概覽統計</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background: var(--color-background); padding: 20px; border-radius: 10px;">
+                            <h3 style="color: var(--color-primary); margin-bottom: 15px;">本週統計</h3>
+                            <p>總任務: <strong>${data.week.total}</strong></p>
+                            <p>已完成: <strong style="color: var(--color-success);">${data.week.completed}</strong></p>
+                            <p>進行中追蹤: <strong style="color: var(--color-warning);">${data.week.in_progress}</strong></p>
+                            <p>逾期: <strong style="color: var(--color-danger);">${data.week.overdue}</strong></p>
+                            <p>完成率: <strong>${data.week.total > 0 ? Math.round(data.week.completed / data.week.total * 100) : 0}%</strong></p>
+                        </div>
+                        <div style="background: var(--color-background); padding: 20px; border-radius: 10px;">
+                            <h3 style="color: var(--color-primary); margin-bottom: 15px;">本月統計</h3>
+                            <p>總任務: <strong>${data.month.total}</strong></p>
+                            <p>已完成: <strong style="color: var(--color-success);">${data.month.completed}</strong></p>
+                            <p>進行中追蹤: <strong style="color: var(--color-warning);">${data.month.in_progress}</strong></p>
+                            <p>逾期: <strong style="color: var(--color-danger);">${data.month.overdue}</strong></p>
+                            <p>完成率: <strong>${data.month.total > 0 ? Math.round(data.month.completed / data.month.total * 100) : 0}%</strong></p>
+                        </div>
+                        <div style="background: var(--color-background); padding: 20px; border-radius: 10px;">
+                            <h3 style="color: var(--color-primary); margin-bottom: 15px;">本年統計</h3>
+                            <p>總任務: <strong>${data.year.total}</strong></p>
+                            <p>已完成: <strong style="color: var(--color-success);">${data.year.completed}</strong></p>
+                            <p>進行中追蹤: <strong style="color: var(--color-warning);">${data.year.in_progress}</strong></p>
+                            <p>逾期: <strong style="color: var(--color-danger);">${data.year.overdue}</strong></p>
+                            <p>完成率: <strong>${data.year.total > 0 ? Math.round(data.year.completed / data.year.total * 100) : 0}%</strong></p>
+                        </div>
+                        <div style="background: var(--color-background); padding: 20px; border-radius: 10px;">
+                            <h3 style="color: var(--color-primary); margin-bottom: 15px;">全部統計</h3>
+                            <p>總任務: <strong>${data.all.total}</strong></p>
+                            <p>已完成: <strong style="color: var(--color-success);">${data.all.completed}</strong></p>
+                            <p>進行中追蹤: <strong style="color: var(--color-warning);">${data.all.in_progress}</strong></p>
+                            <p>逾期: <strong style="color: var(--color-danger);">${data.all.overdue}</strong></p>
+                            <p>完成率: <strong>${data.all.total > 0 ? Math.round(data.all.completed / data.all.total * 100) : 0}%</strong></p>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading overview:', error);
+                showError('載入概覽數據失敗');
+            }
+        }
+
+        // 載入列表數據
+        async function loadListData(page = 1) {
+            try {
+                const params = new URLSearchParams({
+                    period: currentFilters.period,
+                    page: page,
+                    per_page: 50,
+                    ...(currentFilters.taskType && { task_type: currentFilters.taskType }),
+                    ...(currentFilters.user && { user_name: currentFilters.user })
+                });
+                
+                const response = await fetch(`/api/reports/meeting-tasks/list?${params}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                const listTab = document.getElementById('tab-list');
+                
+                if (data.tasks.length === 0) {
+                    listTab.innerHTML = '<h2>📋 已完成任務列表</h2><div class="no-data"><div class="icon">🎉</div><p>沒有已完成的任務</p></div>';
+                    return;
+                }
+                
+                let html = '<h2>📋 已完成任務列表</h2>';
+                html += `<p style="color: var(--color-success); margin-bottom: 20px;">✅ 共有 ${data.total} 個已完成的任務</p>`;
+                html += '<table class="data-table">';
+                html += '<thead><tr>';
+                html += '<th>編號</th>';
+                html += '<th>會議主題</th>';
+                html += '<th>任務類型</th>';
+                html += '<th>任務內容</th>';
+                html += '<th>負責人</th>';
+                html += '<th>管制者</th>';
+                html += '<th>預計完成</th>';
+                html += '<th>狀態</th>';
+                html += '</tr></thead>';
+                html += '<tbody>';
+                
+                data.tasks.forEach((task, index) => {
+                    let statusClass, statusText;
+                    
+                    // 決議項目和追蹤項目分別處理狀態顯示
+                    if (task.task_type === 'resolution') {
+                        // 決議項目：根據是否已同意來顯示狀態
+                        if (task.status === 'agreed_finalized') {
+                            statusClass = 'status-completed';
+                            statusText = '✅ 已同意';
+                        } else if (task.status === 'completed') {
+                            statusClass = 'status-completed';
+                            statusText = '✅ 已完成';
+                        } else {
+                            statusClass = 'status-in-progress';
+                            statusText = '⏳ 待同意';
+                        }
+                    } else {
+                        // 追蹤項目：使用原有的逾期和狀態邏輯
+                        if (task.is_overdue) {
+                            statusClass = 'status-overdue';
+                            statusText = '⚠️ 逾期';
+                        } else if (task.status === 'completed') {
+                            statusClass = 'status-completed';
+                            statusText = '✅ 已完成';
+                        } else if (task.status === 'in_progress' || 
+                                   task.status === 'in_progress_todo' || 
+                                   task.status === 'resolved_executing' ||
+                                   task.status === 'uncompleted_todo' ||
+                                   task.status === 'assigned') {
+                            statusClass = 'status-in-progress';
+                            statusText = '⏳ 進行中';
+                        } else if (task.status === 'unassigned') {
+                            statusClass = 'status-unassigned';
+                            statusText = '⏸️ 未指派';
+                        } else {
+                            statusClass = 'status-unassigned';
+                            statusText = '⏸️ 未指派';
+                        }
+                    }
+                    
+                    html += '<tr>';
+                    html += `<td>${index + 1}</td>`;
+                    html += `<td>${escapeHtml(task.meeting_subject || '-')}</td>`;
+                    html += `<td>${task.task_type === 'tracking' ? '追蹤項目' : '決議項目'}</td>`;
+                    html += `<td>${escapeHtml(task.task_description)}</td>`;
+                    html += `<td>${escapeHtml(task.assigned_to_name || '-')}</td>`;
+                    html += `<td>${escapeHtml(task.controller_name || '-')}</td>`;
+                    html += `<td>${task.expected_completion_date || '-'}</td>`;
+                    html += `<td><span class="status-badge ${statusClass}">${statusText}</span></td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                
+                // 添加分頁控制
+                if (data.total_pages > 1) {
+                    html += '<div style="margin-top: 20px; text-align: center;">';
+                    html += `<span style="margin-right: 10px;">第 ${data.page} 頁，共 ${data.total_pages} 頁（共 ${data.total} 個任務）</span>`;
+                    
+                    if (data.page > 1) {
+                        html += `<button onclick="loadListData(${data.page - 1})" style="margin: 0 5px;">上一頁</button>`;
+                    }
+                    
+                    // 顯示頁碼（最多顯示 5 頁）
+                    let startPage = Math.max(1, data.page - 2);
+                    let endPage = Math.min(data.total_pages, data.page + 2);
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        if (i === data.page) {
+                            html += `<button disabled style="margin: 0 5px; font-weight: bold;">${i}</button>`;
+                        } else {
+                            html += `<button onclick="loadListData(${i})" style="margin: 0 5px;">${i}</button>`;
+                        }
+                    }
+                    
+                    if (data.page < data.total_pages) {
+                        html += `<button onclick="loadListData(${data.page + 1})" style="margin: 0 5px;">下一頁</button>`;
+                    }
+                    
+                    html += '</div>';
+                }
+                
+                listTab.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading list:', error);
+                showError('載入任務列表失敗');
+            }
+        }
+
+        // 載入進行中任務數據
+        async function loadInProgressData() {
+            try {
+                const response = await fetch('/api/reports/meeting-tasks/in-progress');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                const inProgressTab = document.getElementById('tab-in-progress');
+                
+                if (data.tasks.length === 0) {
+                    inProgressTab.innerHTML = '<h2>⏳ 進行中追蹤項目</h2><div class="no-data"><div class="icon">🎉</div><p>太棒了！沒有進行中的追蹤項目</p></div>';
+                    return;
+                }
+                
+                let html = '<h2>⏳ 進行中追蹤項目</h2>';
+                html += `<p style="color: var(--color-warning); margin-bottom: 20px;">⏳ 共有 ${data.total} 個追蹤項目正在進行中（不含逾期）</p>`;
+                html += '<table class="data-table">';
+                html += '<thead><tr>';
+                html += '<th>編號</th>';
+                html += '<th>會議主題</th>';
+                html += '<th>會議日期</th>';
+                html += '<th>任務類型</th>';
+                html += '<th>任務內容</th>';
+                html += '<th>負責人</th>';
+                html += '<th>管制者</th>';
+                html += '<th>預計完成</th>';
+                html += '<th>狀態</th>';
+                html += '</tr></thead>';
+                html += '<tbody>';
+                
+                data.tasks.forEach((task, index) => {
+                    // 所有任務都是追蹤項目，統一顯示進行中
+                    let statusText = '⏳ 進行中';
+                    let statusClass = 'status-in-progress';
+                    
+                    html += '<tr>';
+                    html += `<td>${index + 1}</td>`;
+                    html += `<td>${escapeHtml(task.meeting_subject || '-')}</td>`;
+                    html += `<td>${task.meeting_date || '-'}</td>`;
+                    html += `<td>追蹤項目</td>`;
+                    html += `<td>${escapeHtml(task.task_description)}</td>`;
+                    html += `<td>${escapeHtml(task.assigned_to_name || '-')}</td>`;
+                    html += `<td>${escapeHtml(task.controller_name || '-')}</td>`;
+                    html += `<td>${task.expected_completion_date || '-'}</td>`;
+                    html += `<td><span class="status-badge ${statusClass}">${statusText}</span></td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                inProgressTab.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading in-progress tasks:', error);
+                showError('載入進行中任務失敗');
+            }
+        }
+
+        // 載入逾期數據
+        async function loadOverdueData() {
+            try {
+                const response = await fetch('/api/reports/meeting-tasks/overdue');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                const overdueTab = document.getElementById('tab-overdue');
+                
+                if (data.tasks.length === 0) {
+                    overdueTab.innerHTML = '<h2>🔴 逾期任務</h2><div class="no-data"><div class="icon">🎉</div><p>太棒了！目前沒有逾期任務</p></div>';
+                    return;
+                }
+                
+                let html = '<h2>🔴 逾期任務</h2>';
+                html += `<p style="color: var(--color-danger); margin-bottom: 20px;">⚠️ 共有 ${data.total} 個逾期的追蹤項目需要處理</p>`;
+                html += '<table class="data-table">';
+                html += '<thead><tr>';
+                html += '<th>編號</th>';
+                html += '<th>會議主題</th>';
+                html += '<th>會議日期</th>';
+                html += '<th>任務內容</th>';
+                html += '<th>負責人</th>';
+                html += '<th>管制者</th>';
+                html += '<th>預計完成</th>';
+                html += '<th>逾期天數</th>';
+                html += '<th>處理狀態</th>';
+                html += '</tr></thead>';
+                html += '<tbody>';
+                
+                data.tasks.forEach((task, index) => {
+                    // 只顯示追蹤項目（決議項目已在後端過濾）
+                    const overdueClass = task.overdue_days >= 7 ? 'style="background: #ffe6e6;"' : '';
+                    const overdueDaysText = `${task.overdue_days} 天`;
+                    
+                    // 根據實際狀態顯示處理狀態
+                    let statusText = '';
+                    let statusClass = '';
+                    
+                    if (task.status === 'completed') {
+                        statusText = '✅ 已完成';
+                        statusClass = 'status-completed';
+                    } else if (task.status === 'in_progress_todo' || 
+                               task.status === 'resolved_executing' || 
+                               task.status === 'in_progress' ||
+                               task.status === 'uncompleted_todo' ||
+                               task.status === 'assigned') {
+                        statusText = '⏳ 進行中（逾期）';
+                        statusClass = 'status-overdue';
+                    } else if (task.status === 'unassigned') {
+                        statusText = '⏸️ 未指派（逾期）';
+                        statusClass = 'status-overdue';
+                    } else {
+                        // 其他未知狀態
+                        statusText = `⚠️ 逾期`;
+                        statusClass = 'status-overdue';
+                    }
+                    
+                    html += `<tr ${overdueClass}>`;
+                    html += `<td>${index + 1}</td>`;
+                    html += `<td>${escapeHtml(task.meeting_subject || '-')}</td>`;
+                    html += `<td>${task.meeting_date || '-'}</td>`;
+                    html += `<td>${escapeHtml(task.task_description)}</td>`;
+                    html += `<td>${escapeHtml(task.assigned_to_name || '-')}</td>`;
+                    html += `<td>${escapeHtml(task.controller_name || '-')}</td>`;
+                    html += `<td style="color: var(--color-danger); font-weight: bold;">${task.expected_completion_date || '-'}</td>`;
+                    html += `<td style="color: var(--color-danger); font-weight: bold;">${overdueDaysText}</td>`;
+                    html += `<td><span class="status-badge ${statusClass}">${statusText}</span></td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                overdueTab.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading overdue:', error);
+                showError('載入逾期任務失敗');
+            }
+        }
+
+        // 載入排行數據
+        async function loadRankingData() {
+            try {
+                const response = await fetch('/api/reports/meeting-tasks/ranking');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                const rankingTab = document.getElementById('tab-ranking');
+                
+                if (data.rankings.length === 0) {
+                    rankingTab.innerHTML = '<h2>🏆 個人排行榜</h2><div class="no-data"><div class="icon">📊</div><p>暫無排行數據</p></div>';
+                    return;
+                }
+                
+                let html = '<h2>🏆 個人排行榜</h2>';
+                html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-top: 20px;">';
+                
+                // 完成任務數排行
+                html += '<div>';
+                html += '<h3 style="color: var(--color-primary); margin-bottom: 15px;">📊 完成任務數排行</h3>';
+                html += '<ul class="ranking-list">';
+                
+                // 計算實際排名（考慮並列）
+                let currentRank = 1;
+                let prevValue = null;
+                data.rankings.slice(0, 10).forEach((item, index) => {
+                    // 如果數值與前一名不同，更新排名
+                    if (prevValue !== null && item.completed_tasks !== prevValue) {
+                        currentRank = index + 1;
+                    }
+                    prevValue = item.completed_tasks;
+                    
+                    const medal = currentRank === 1 ? '🥇' : currentRank === 2 ? '🥈' : currentRank === 3 ? '🥉' : `#${currentRank}`;
+                    html += `
+                        <li class="ranking-item">
+                            <div class="ranking-medal">${medal}</div>
+                            <div class="ranking-info">
+                                <div class="ranking-name">${escapeHtml(item.user_name)}</div>
+                                <div class="ranking-details">
+                                    總任務: ${item.total_tasks} | 
+                                    已完成: ${item.completed_tasks} | 
+                                    完成率: ${item.completion_rate}%
+                                </div>
+                            </div>
+                            <div class="ranking-value">${item.completed_tasks}</div>
+                        </li>
+                    `;
+                });
+                html += '</ul></div>';
+                
+                // 完成率排行
+                html += '<div>';
+                html += '<h3 style="color: var(--color-success); margin-bottom: 15px;">📈 完成率排行</h3>';
+                html += '<ul class="ranking-list">';
+                const sortedByRate = [...data.rankings]
+                    .filter(item => item.total_tasks >= 3) // 至少3個任務才列入排行
+                    .sort((a, b) => b.completion_rate - a.completion_rate)
+                    .slice(0, 10);
+                
+                // 計算實際排名（考慮並列）
+                let currentRank2 = 1;
+                let prevValue2 = null;
+                sortedByRate.forEach((item, index) => {
+                    // 如果數值與前一名不同，更新排名
+                    if (prevValue2 !== null && item.completion_rate !== prevValue2) {
+                        currentRank2 = index + 1;
+                    }
+                    prevValue2 = item.completion_rate;
+                    
+                    const medal = currentRank2 === 1 ? '🥇' : currentRank2 === 2 ? '🥈' : currentRank2 === 3 ? '🥉' : `#${currentRank2}`;
+                    html += `
+                        <li class="ranking-item">
+                            <div class="ranking-medal">${medal}</div>
+                            <div class="ranking-info">
+                                <div class="ranking-name">${escapeHtml(item.user_name)}</div>
+                                <div class="ranking-details">
+                                    總任務: ${item.total_tasks} | 
+                                    已完成: ${item.completed_tasks}
+                                </div>
+                            </div>
+                            <div class="ranking-value">${item.completion_rate}%</div>
+                        </li>
+                    `;
+                });
+                html += '</ul></div>';
+                
+                html += '</div>';
+                rankingTab.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading ranking:', error);
+                showError('載入排行榜失敗');
+            }
+        }
+
+        // 載入待同意決議項目
+        async function loadPendingResolutionsData() {
+            try {
+                const response = await fetch('/api/reports/meeting-tasks/pending-resolutions');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                const pendingTab = document.getElementById('tab-pending-resolutions');
+                
+                if (data.tasks.length === 0) {
+                    pendingTab.innerHTML = '<h2>⏳ 待同意決議項目</h2><div class="no-data"><div class="icon">🎉</div><p>太棒了！沒有待同意的決議項目</p></div>';
+                    return;
+                }
+                
+                let html = '<h2>⏳ 待同意決議項目</h2>';
+                html += `<p style="color: var(--color-warning); margin-bottom: 20px;">📝 共有 ${data.total} 個決議項目待您同意</p>`;
+                html += '<table class="data-table">';
+                html += '<thead><tr>';
+                html += '<th>編號</th>';
+                html += '<th>會議主題</th>';
+                html += '<th>會議日期</th>';
+                html += '<th>決議內容</th>';
+                html += '<th>負責人</th>';
+                html += '<th>管制者</th>';
+                html += '<th>建立時間</th>';
+                html += '<th>狀態</th>';
+                html += '</tr></thead>';
+                html += '<tbody>';
+                
+                data.tasks.forEach((task, index) => {
+                    html += '<tr style="background: #fffbeb;">';  // 淺黃色背景
+                    html += `<td>${index + 1}</td>`;
+                    html += `<td>${escapeHtml(task.meeting_subject || '-')}</td>`;
+                    html += `<td>${task.meeting_date || '-'}</td>`;
+                    html += `<td>${escapeHtml(task.task_description)}</td>`;
+                    html += `<td>${escapeHtml(task.assigned_to_name || '-')}</td>`;
+                    html += `<td>${escapeHtml(task.controller_name || '-')}</td>`;
+                    html += `<td>${task.created_at || '-'}</td>`;
+                    html += `<td><span class="status-badge status-in-progress">⏳ 待同意</span></td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                pendingTab.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading pending resolutions:', error);
+                showError('載入待同意決議失敗');
+            }
+        }
+
+        // 載入待指派追蹤項目
+        async function loadUnassignedTrackingData() {
+            try {
+                const response = await fetch('/api/reports/meeting-tasks/unassigned-tracking');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                const unassignedTab = document.getElementById('tab-unassigned-tracking');
+                
+                if (data.tasks.length === 0) {
+                    unassignedTab.innerHTML = '<h2>⏸️ 待指派追蹤項目</h2><div class="no-data"><div class="icon">🎉</div><p>太棒了！沒有待指派的追蹤項目</p></div>';
+                    return;
+                }
+                
+                let html = '<h2>⏸️ 待指派追蹤項目</h2>';
+                html += `<p style="color: var(--color-info); margin-bottom: 20px;">⏸️ 共有 ${data.total} 個追蹤項目待指派</p>`;
+                html += '<table class="data-table">';
+                html += '<thead><tr>';
+                html += '<th>編號</th>';
+                html += '<th>會議主題</th>';
+                html += '<th>會議日期</th>';
+                html += '<th>追蹤內容</th>';
+                html += '<th>負責人</th>';
+                html += '<th>管制者</th>';
+                html += '<th>預計完成</th>';
+                html += '<th>建立時間</th>';
+                html += '<th>狀態</th>';
+                html += '</tr></thead>';
+                html += '<tbody>';
+                
+                data.tasks.forEach((task, index) => {
+                    html += '<tr style="background: #f0f9ff;">';  // 淺藍色背景
+                    html += `<td>${index + 1}</td>`;
+                    html += `<td>${escapeHtml(task.meeting_subject || '-')}</td>`;
+                    html += `<td>${task.meeting_date || '-'}</td>`;
+                    html += `<td>${escapeHtml(task.task_description)}</td>`;
+                    html += `<td>${escapeHtml(task.assigned_to_name || '-')}</td>`;
+                    html += `<td>${escapeHtml(task.controller_name || '-')}</td>`;
+                    html += `<td>${task.expected_completion_date || '-'}</td>`;
+                    html += `<td>${task.created_at || '-'}</td>`;
+                    html += `<td><span class="status-badge status-unassigned">⏸️ 待指派</span></td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                unassignedTab.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading unassigned tracking:', error);
+                showError('載入待指派追蹤失敗');
+            }
+        }
+
+        // 工具函數
+        function showError(message) {
+            alert(message);
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

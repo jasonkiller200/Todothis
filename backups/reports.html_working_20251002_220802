@@ -88,7 +88,7 @@
         
         .report-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 30px;
             margin-top: 40px;
         }
@@ -179,6 +179,29 @@
         .card-button:hover {
             transform: scale(1.05);
         }
+        
+        .stats-preview {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-item strong {
+            display: block;
+            font-size: 2em;
+            color: var(--color-primary);
+        }
+        
+        .stat-item span {
+            font-size: 0.9em;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -234,12 +257,157 @@
         document.querySelectorAll('.report-card').forEach(card => {
             card.addEventListener('click', function(e) {
                 if (!e.target.classList.contains('card-button')) {
-                    const button = this.querySelector('.card-button');
-                    if (button) {
-                        window.location.href = button.href;
-                    }
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;'
+            }[s]));
+        }
+
+        function getStatusText(status) {
+            return { 'pending': '待開始', 'in-progress': '進行中', 'completed': '已完成', 'uncompleted': '未完成' }[status] || status;
+        }
+
+        async function fetchReport(reportType) {
+            try {
+                const response = await fetch(`/api/reports/${reportType}`);
+                const data = await response.json();
+                if (data.error) {
+                    document.getElementById(`${reportType}-report-details`).innerHTML = `<p class="no-data">${data.error}</p>`;
+                    return null;
                 }
+                return data;
+            } catch (error) {
+                console.error(`Error fetching ${reportType} report:`, error);
+                document.getElementById(`${reportType}-report-details`).innerHTML = `<p class="no-data">無法載入 ${reportType} 報告。</p>`;
+                return null;
+            }
+        }
+
+        function renderReport(reportData, targetSummaryId, targetDetailsId) {
+            const summaryContainer = document.getElementById(targetSummaryId);
+            const detailsContainer = document.getElementById(targetDetailsId);
+            summaryContainer.innerHTML = '';
+            detailsContainer.innerHTML = '';
+
+            if (!reportData || Object.keys(reportData.data).length === 0) {
+                detailsContainer.innerHTML = '<p class="no-data">暫無報告數據。</p>';
+                return;
+            }
+
+            let totalTasks = 0;
+            let totalCompleted = 0;
+            let totalUncompleted = 0;
+
+            for (const deptName in reportData.data) {
+                const dept = reportData.data[deptName];
+                totalTasks += dept.total_tasks;
+                totalCompleted += dept.completed_tasks;
+                totalUncompleted += dept.uncompleted_tasks;
+            }
+
+            const overallCompletionRate = totalTasks > 0 ? ((totalCompleted / totalTasks) * 100).toFixed(2) : 0;
+
+            summaryContainer.innerHTML = `
+                <div class="summary-item"><strong>${totalTasks}</strong><span>總任務數</span></div>
+                <div class="summary-item"><strong>${totalCompleted}</strong><span>已完成</span></div>
+                <div class="summary-item"><strong>${totalUncompleted}</strong><span>未完成</span></div>
+                <div class="summary-item"><strong>${overallCompletionRate}%</strong><span>總達成率</span></div>
+            `;
+
+            let detailsHtml = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>部門</th>
+                            <th>總任務</th>
+                            <th>已完成</th>
+                            <th>未完成</th>
+                            <th>達成率</th>
+                            <th>人員詳情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (const deptName in reportData.data) {
+                const dept = reportData.data[deptName];
+                detailsHtml += `
+                    <tr>
+                        <td>${escapeHTML(deptName)}</td>
+                        <td>${dept.total_tasks}</td>
+                        <td>${dept.completed_tasks}</td>
+                        <td>${dept.uncompleted_tasks}</td>
+                        <td>${dept.completion_rate}%</td>
+                        <td>
+                            <table class="user-report-table">
+                                <thead>
+                                    <tr>
+                                        <th>姓名</th>
+                                        <th>角色</th>
+                                        <th>總任務</th>
+                                        <th>已完成</th>
+                                        <th>未完成</th>
+                                        <th>達成率</th>
+                                        <th>任務列表</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                for (const userKey in dept.users) {
+                    const user = dept.users[userKey];
+                    detailsHtml += `
+                        <tr>
+                            <td>${escapeHTML(user.name)}</td>
+                            <td>${escapeHTML(user.role)}</td>
+                            <td>${user.total_tasks}</td>
+                            <td>${user.completed_tasks}</td>
+                            <td>${user.uncompleted_tasks}</td>
+                            <td>${user.completion_rate}%</td>
+                            <td>
+                                <ul class="task-list">
+                                    ${user.tasks.map(task => `
+                                        <li>
+                                            <span class="task-title-clickable" data-description="${escapeHTML(task.description)}">
+                                                <strong>${escapeHTML(task.title)}</strong> 
+                                            </span>
+                                            <span>(${getStatusText(task.status)})</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </td>
+                        </tr>
+                    `;
+                }
+                detailsHtml += `
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                `;
+            }
+            detailsHtml += `
+                    </tbody>
+                </table>
+            `;
+            detailsContainer.innerHTML = detailsHtml;
+
+            // Add event listeners for clickable task titles
+            detailsContainer.querySelectorAll('.task-title-clickable').forEach(item => {
+                item.addEventListener('click', function() {
+                    const description = this.dataset.description;
+                    alert('任務內容:\n' + description);
+                });
             });
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const weeklyReport = await fetchReport('weekly');
+            if (weeklyReport) {
+                renderReport(weeklyReport, 'weekly-report-summary', 'weekly-report-details');
+            }
+
+            const monthlyReport = await fetchReport('monthly');
+            if (monthlyReport) {
+                renderReport(monthlyReport, 'monthly-report-summary', 'monthly-report-details');
+            }
         });
     </script>
 </body>

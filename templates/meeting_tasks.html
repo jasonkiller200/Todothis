@@ -370,19 +370,13 @@
                 const currentMonth = new Date().getMonth() + 1;
 
                 // 填充年份下拉選單
-                if (availableYears.length > 0) {
-                    availableYears.forEach(year => {
+                if (data.years.length > 0) {
+                    data.years.forEach(year => {
                         const option = document.createElement('option');
                         option.value = year;
                         option.textContent = year;
                         yearSelect.appendChild(option);
                     });
-                    // 預設選擇當前年份，如果資料庫中有該年份
-                    if (availableYears.includes(currentYear)) {
-                        yearSelect.value = currentYear;
-                    } else {
-                        yearSelect.value = availableYears[0]; // 否則選擇第一個可用的年份
-                    }
                 } else {
                     const option = document.createElement('option');
                     option.value = '';
@@ -391,24 +385,26 @@
                 }
 
                 // 填充月份下拉選單
-                if (availableMonths.length > 0) {
-                    availableMonths.forEach(month => {
+                if (data.months.length > 0) {
+                    data.months.forEach(month => {
                         const option = document.createElement('option');
                         option.value = month;
                         option.textContent = month + '月';
                         monthSelect.appendChild(option);
                     });
-                    // 預設選擇當前月份，如果資料庫中有該月份
-                    if (availableMonths.includes(currentMonth)) {
-                        monthSelect.value = currentMonth;
-                    } else {
-                        monthSelect.value = availableMonths[0]; // 否則選擇第一個可用的月份
-                    }
                 } else {
                     const option = document.createElement('option');
                     option.value = '';
                     option.textContent = '無可用月份';
                     monthSelect.appendChild(option);
+                }
+
+                // 直接使用後端提供的預設值
+                if (data.defaultYear) {
+                    yearSelect.value = data.defaultYear;
+                }
+                if (data.defaultMonth) {
+                    monthSelect.value = data.defaultMonth;
                 }
 
             } catch (error) {
